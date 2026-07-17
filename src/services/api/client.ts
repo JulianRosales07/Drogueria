@@ -9,11 +9,7 @@ const rawBaseUrl = import.meta.env.VITE_API_URL || 'https://drogueriaback.onrend
 const normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, '')
 
 export const apiClient = axios.create({
-<<<<<<< HEAD
   baseURL: normalizedBaseUrl,
-=======
-  baseURL: import.meta.env.VITE_API_URL || 'https://drogueriaback.onrender.com/api',
->>>>>>> d88b51b1e842bff5056dc0760640893e2e588627
   timeout: 8000,
   headers: {
     'Content-Type': 'application/json',
