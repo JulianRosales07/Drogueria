@@ -1,0 +1,183 @@
+import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import { useUiStore } from '../../../store/ui-store'
+import { login as loginRequest } from '../../../services/api/auth'
+
+type LoginFormValues = {
+  email: string
+  password: string
+}
+
+export function LoginPage() {
+  const navigate = useNavigate()
+  const login = useUiStore((state) => state.login)
+  const { register, handleSubmit, formState } = useForm<LoginFormValues>({
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  })
+
+  const onSubmit = handleSubmit(async (values) => {
+    try {
+      const result = await loginRequest(values.email, values.password)
+      login(result.user, result.accessToken, result.refreshToken)
+      toast.success('Bienvenido al panel')
+
+      const SUPER_ADMIN_ROLE = 'Super Administrador'
+      const redirectTo = result.user.role === SUPER_ADMIN_ROLE ? '/droguerias' : '/dashboard'
+      navigate(redirectTo, { replace: true })
+    } catch (error: any) {
+      let message = 'Credenciales inválidas'
+      if (error.response) {
+        message = error.response.data?.message || message
+      } else if (error.request) {
+        message = 'No se pudo establecer conexión con el servidor. Verifique si el backend está corriendo.'
+      } else {
+        message = error.message || message
+      }
+      toast.error(message)
+    }
+  })
+
+  return (
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 lg:p-8 dark:bg-slate-950 font-sans relative overflow-hidden">
+      {/* Background ring decoration */}
+      <div className="absolute top-0 left-0 w-96 h-96 rounded-full bg-cyan-400/20 -translate-x-1/3 -translate-y-1/3 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full bg-blue-400/10 translate-x-1/3 translate-y-1/3 blur-3xl pointer-events-none" />
+
+      {/* Main card container */}
+      <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden grid lg:grid-cols-2 min-h-[620px] border border-slate-200/50 dark:border-slate-800 dark:bg-slate-900 z-10">
+
+        {/* Left Side: Stethoscope image & logo overlay */}
+        <section className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden bg-slate-900 text-white">
+          {/* Stethoscope Background Image with Overlay */}
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-luminosity pointer-events-none"
+            style={{
+              backgroundImage: `url('https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1000&q=80')`
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900/90 to-cyan-950/40 pointer-events-none" />
+
+          {/* Cyan Concentric Rings Decoration */}
+          <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full border-[18px] border-cyan-400/30 pointer-events-none" />
+          <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full border-[18px] border-cyan-400/20 pointer-events-none" />
+
+          {/* Logo & Brand Name */}
+          <div className="relative z-10">
+            <div className="flex items-center gap-3">
+              {/* Custom SVG "C" Logo */}
+              <svg viewBox="0 0 100 100" className="w-10 h-10">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="35"
+                  stroke="#22d3ee"
+                  strokeWidth="12"
+                  fill="none"
+                  strokeDasharray="170 100"
+                  strokeLinecap="round"
+                  transform="rotate(-45 50 50)"
+                />
+              </svg>
+              <span className="text-xl font-semibold tracking-wide text-white">Cápsula</span>
+            </div>
+          </div>
+
+          {/* Bottom Copyright Text */}
+          <div className="relative z-10 text-xs text-slate-400 font-medium">
+            Desarrollado por: Julián David Rosales Portilla
+          </div>
+        </section>
+
+        {/* Right Side: Form */}
+        <section className="flex flex-col justify-between p-8 sm:p-12 bg-white dark:bg-slate-900">
+
+
+
+          {/* Center Form Section */}
+          <div className="w-full max-w-sm mx-auto my-auto">
+            {/* Center Logo */}
+            <div className="flex justify-center mb-4">
+              <svg viewBox="0 0 100 100" className="w-14 h-14">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="35"
+                  stroke="#22d3ee"
+                  strokeWidth="12"
+                  fill="none"
+                  strokeDasharray="170 100"
+                  strokeLinecap="round"
+                  transform="rotate(-45 50 50)"
+                />
+              </svg>
+            </div>
+
+            {/* Title & Subtitle */}
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
+                Iniciar Sesión
+              </h2>
+              <p className="text-xs text-slate-400 mt-2">
+                Ingresa a tu cuenta de membresía
+              </p>
+            </div>
+
+            {/* Form Inputs */}
+            <form onSubmit={onSubmit} className="space-y-4">
+              {/* Username/Email Input Container */}
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 pointer-events-none">
+                  {/* User Icon */}
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </span>
+                <input
+                  type="email"
+                  placeholder="Usuario o Correo Electrónico"
+                  className="w-full rounded-full border border-slate-200 bg-slate-50/50 pl-11 pr-4 py-3 text-sm text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  {...register('email', { required: true })}
+                />
+              </div>
+
+              {/* Password Input Container */}
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 pointer-events-none">
+                  {/* Lock Icon */}
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </span>
+                <input
+                  type="password"
+                  placeholder="Contraseña"
+                  className="w-full rounded-full border border-slate-200 bg-slate-50/50 pl-11 pr-4 py-3 text-sm text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  {...register('password', { required: true, minLength: 6 })}
+                />
+              </div>
+
+
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={formState.isSubmitting}
+                className="w-full rounded-full bg-cyan-400 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-400/25 transition hover:bg-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 disabled:opacity-60"
+              >
+                {formState.isSubmitting ? 'Ingresando...' : 'Ingresar'}
+              </button>
+            </form>
+
+          </div>
+
+
+
+        </section>
+      </div>
+    </div>
+  )
+}
