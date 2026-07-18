@@ -15,17 +15,21 @@ type AuthUser = {
 type UiState = {
   theme: ThemeMode
   sidebarOpen: boolean
+  sidebarCollapsed: boolean
   isAuthenticated: boolean
   user: AuthUser | null
   setTheme: (theme: ThemeMode) => void
   toggleTheme: () => void
   setSidebarOpen: (open: boolean) => void
   toggleSidebar: () => void
+  setSidebarCollapsed: (collapsed: boolean) => void
+  toggleSidebarCollapsed: () => void
   login: (user: AuthUser, accessToken: string, refreshToken: string) => void
   logout: () => void
 }
 
 const THEME_STORAGE_KEY = 'drogueria-theme'
+const SIDEBAR_COLLAPSED_KEY = 'drogueria-sidebar-collapsed'
 const ACCESS_TOKEN_KEY = 'access_token'
 const REFRESH_TOKEN_KEY = 'refresh_token'
 const USER_STORAGE_KEY = 'drogueria-user'
@@ -69,12 +73,18 @@ function hasStoredSession(): boolean {
   return Boolean(window.localStorage.getItem(ACCESS_TOKEN_KEY))
 }
 
+function getInitialSidebarCollapsed(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
+}
+
 const initialTheme = getInitialTheme()
 applyTheme(initialTheme)
 
 export const useUiStore = create<UiState>((set, get) => ({
   theme: initialTheme,
   sidebarOpen: false,
+  sidebarCollapsed: getInitialSidebarCollapsed(),
   isAuthenticated: hasStoredSession(),
   user: getInitialUser(),
   setTheme: (theme) => {
@@ -90,6 +100,15 @@ export const useUiStore = create<UiState>((set, get) => ({
   },
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  setSidebarCollapsed: (collapsed) => {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed))
+    set({ sidebarCollapsed: collapsed })
+  },
+  toggleSidebarCollapsed: () => {
+    const next = !get().sidebarCollapsed
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next))
+    set({ sidebarCollapsed: next })
+  },
   login: (user, accessToken, refreshToken) => {
     window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
     window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
