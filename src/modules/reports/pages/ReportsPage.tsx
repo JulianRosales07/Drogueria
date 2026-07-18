@@ -1,8 +1,12 @@
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Bar } from 'react-chartjs-2'
 import 'chart.js/auto'
+import type { ColumnDef } from '@tanstack/react-table'
+import * as XLSX from 'xlsx'
 import { SectionCard } from '../../../components/ui/SectionCard'
-import { listSales } from '../../../services/api/sales'
+import { DataTable } from '../../../components/ui/DataTable'
+import { listSales, type Sale } from '../../../services/api/sales'
 import { listPurchases } from '../../../services/api/purchases'
 import { listProducts } from '../../../services/api/products'
 
@@ -14,7 +18,31 @@ function money(value: number) {
   }).format(value)
 }
 
+function formatDateTime(dateStr: string) {
+  return new Date(dateStr).toLocaleString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function toDateInputValue(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
 export function ReportsPage() {
+  const today = useMemo(() => new Date(), [])
+  const monthAgo = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return d
+  }, [])
+
+  const [dateFrom, setDateFrom] = useState(toDateInputValue(monthAgo))
+  const [dateTo, setDateTo] = useState(toDateInputValue(today))
+
   const salesQuery = useQuery({
     queryKey: ['sales'],
     queryFn: listSales,
@@ -102,6 +130,84 @@ export function ReportsPage() {
 
   const loading = salesQuery.isLoading || purchasesQuery.isLoading || productsQuery.isLoading
 
+  // Ventas filtradas por rango de fechas (para el reporte detallado)
+  const filteredSales = useMemo(() => {
+    const from = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null
+    const to = dateTo ? new Date(`${dateTo}T23:59:59`) : null
+    return sales
+      .filter((sale) => {
+        const created = new Date(sale.created_at)
+        if (from && created < from) return false
+        if (to && created > to) return false
+        return true
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  }, [sales, dateFrom, dateTo])
+
+  const salesReportStats = useMemo(() => {
+    const totalAmount = filteredSales.reduce((sum, s) => sum + s.total, 0)
+    const totalItems = filteredSales.reduce(
+      (sum, s) => sum + s.sale_items.reduce((iSum, item) => iSum + item.unit_quantity, 0),
+      0,
+    )
+    const avgTicket = filteredSales.length > 0 ? totalAmount / filteredSales.length : 0
+    return { totalAmount, totalItems, avgTicket, count: filteredSales.length }
+  }, [filteredSales])
+
+  const saleColumns = useMemo<ColumnDef<Sale>[]>(
+    () => [
+      {
+        header: 'Fecha',
+        accessorKey: 'created_at',
+        cell: ({ row }) => formatDateTime(row.original.created_at),
+      },
+      { header: 'Folio', accessorKey: 'id', cell: ({ row }) => row.original.id.slice(0, 8).toUpperCase() },
+      {
+        header: 'Cliente',
+        id: 'customer',
+        cell: ({ row }) => row.original.customers?.full_name || 'Venta de mostrador',
+      },
+      {
+        header: 'Ítems',
+        id: 'items',
+        cell: ({ row }) => row.original.sale_items.reduce((sum, item) => sum + item.unit_quantity, 0),
+      },
+      { header: 'Subtotal', accessorKey: 'subtotal', cell: ({ row }) => money(row.original.subtotal) },
+      { header: 'Descuento', accessorKey: 'discount', cell: ({ row }) => money(row.original.discount) },
+      {
+        header: 'Total',
+        accessorKey: 'total',
+        cell: ({ row }) => <span className="font-semibold text-slate-900 dark:text-white">{money(row.original.total)}</span>,
+      },
+    ],
+    [],
+  )
+
+  const exportSalesToExcel = () => {
+    const rows = filteredSales.flatMap((sale) =>
+      sale.sale_items.map((item) => ({
+        Fecha: formatDateTime(sale.created_at),
+        Folio: sale.id,
+        Cliente: sale.customers?.full_name || 'Venta de mostrador',
+        Producto: item.products.name,
+        Presentación: item.unit_label,
+        Cantidad: item.unit_quantity,
+        'Precio unitario': item.unit_price,
+        'Total línea': item.line_total,
+        'Total venta': sale.total,
+      })),
+    )
+
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+    worksheet['!cols'] = [
+      { wch: 18 }, { wch: 12 }, { wch: 22 }, { wch: 28 },
+      { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
+    ]
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Ventas')
+    XLSX.writeFile(workbook, `reporte_ventas_${dateFrom}_a_${dateTo}.xlsx`)
+  }
+
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <SectionCard title="Reporte Comercial (Miles COP)" description="Evolución y comparativa mensual de Ventas vs Compras.">
@@ -152,6 +258,76 @@ export function ReportsPage() {
           </div>
         )}
       </SectionCard>
+
+      <div className="xl:col-span-2">
+        <SectionCard
+          title="Reporte de Ventas"
+          description="Detalle de tickets registrados en el punto de venta, filtrable por fecha."
+          action={
+            <div className="flex flex-wrap items-end gap-2">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Desde</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="mt-1 rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Hasta</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="mt-1 rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={exportSalesToExcel}
+                disabled={filteredSales.length === 0}
+                className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ⬇️ Exportar a Excel
+              </button>
+            </div>
+          }
+        >
+          <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <article className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Ventas en el rango</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{salesReportStats.count}</p>
+            </article>
+            <article className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Total facturado</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{money(salesReportStats.totalAmount)}</p>
+            </article>
+            <article className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Unidades vendidas</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{salesReportStats.totalItems}</p>
+            </article>
+            <article className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Ticket promedio</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{money(salesReportStats.avgTicket)}</p>
+            </article>
+          </div>
+
+          {salesQuery.isLoading ? (
+            <div className="py-10 text-center text-sm text-slate-400">Cargando ventas...</div>
+          ) : salesQuery.isError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center text-sm text-red-600 dark:border-red-800 dark:bg-red-500/10 dark:text-red-400">
+              Error al cargar las ventas
+            </div>
+          ) : filteredSales.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-300 py-10 text-center text-sm text-slate-400 dark:border-slate-700">
+              No hay ventas registradas en el rango seleccionado.
+            </div>
+          ) : (
+            <DataTable data={filteredSales} columns={saleColumns} />
+          )}
+        </SectionCard>
+      </div>
     </div>
   )
 }
