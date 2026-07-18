@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { useUiStore } from '../store/ui-store'
@@ -31,7 +31,7 @@ const SUPER_ADMIN_ROLE = 'Super Administrador'
 type NavItem = {
   label: string
   path: string
-  icon: (props: { className?: string }) => JSX.Element
+  icon: (props: { className?: string }) => ReactElement
   badgeKey?: 'lowStock'
 }
 
