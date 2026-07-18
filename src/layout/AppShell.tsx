@@ -2,6 +2,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { useUiStore } from '../store/ui-store'
+import { CapsulaLogo } from '../components/CapsulaLogo'
 
 const SUPER_ADMIN_ROLE = 'Super Administrador'
 
@@ -57,20 +58,7 @@ export function AppShell() {
         >
           <div className="flex items-center justify-between px-2 py-2">
             <div className="flex items-center gap-2">
-              {/* Custom SVG "C" Logo */}
-              <svg viewBox="0 0 100 100" className="w-8 h-8 flex-shrink-0">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="35"
-                  stroke="#22d3ee"
-                  strokeWidth="12"
-                  fill="none"
-                  strokeDasharray="170 100"
-                  strokeLinecap="round"
-                  transform="rotate(-45 50 50)"
-                />
-              </svg>
+              <CapsulaLogo className="w-8 h-8" />
               <div className="leading-tight">
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">
                   Cápsula

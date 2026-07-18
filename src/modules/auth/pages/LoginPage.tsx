@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useUiStore } from '../../../store/ui-store'
 import { login as loginRequest } from '../../../services/api/auth'
+import { CapsulaLogo } from '../../../components/CapsulaLogo'
 
 type LoginFormValues = {
   email: string
@@ -68,20 +69,7 @@ export function LoginPage() {
           {/* Logo & Brand Name */}
           <div className="relative z-10">
             <div className="flex items-center gap-3">
-              {/* Custom SVG "C" Logo */}
-              <svg viewBox="0 0 100 100" className="w-10 h-10">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="35"
-                  stroke="#22d3ee"
-                  strokeWidth="12"
-                  fill="none"
-                  strokeDasharray="170 100"
-                  strokeLinecap="round"
-                  transform="rotate(-45 50 50)"
-                />
-              </svg>
+              <CapsulaLogo className="w-10 h-10" />
               <span className="text-xl font-semibold tracking-wide text-white">Cápsula</span>
             </div>
           </div>
@@ -101,19 +89,7 @@ export function LoginPage() {
           <div className="w-full max-w-sm mx-auto my-auto">
             {/* Center Logo */}
             <div className="flex justify-center mb-4">
-              <svg viewBox="0 0 100 100" className="w-14 h-14">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="35"
-                  stroke="#22d3ee"
-                  strokeWidth="12"
-                  fill="none"
-                  strokeDasharray="170 100"
-                  strokeLinecap="round"
-                  transform="rotate(-45 50 50)"
-                />
-              </svg>
+              <CapsulaLogo className="w-14 h-14" />
             </div>
 
             {/* Title & Subtitle */}

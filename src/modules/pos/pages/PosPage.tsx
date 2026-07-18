@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useReactToPrint } from 'react-to-print'
 import { Receipt } from '../../../components/Receipt'
+import { CapsulaLogo } from '../../../components/CapsulaLogo'
 import { listProducts, type Product } from '../../../services/api/products'
 import { createSale, type Sale } from '../../../services/api/sales'
 import { useUiStore } from '../../../store/ui-store'
@@ -360,11 +361,9 @@ export function PosPage() {
         {/* ===== Barra superior: marca + usuario ===== */}
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2">
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">
-              D
-            </span>
+            <CapsulaLogo className="h-8 w-8" />
             <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-900">Droguería POS</p>
+              <p className="text-sm font-semibold text-slate-900">Cápsula POS</p>
               <p className="text-xs text-slate-400">Ticket #{ticketNumber}</p>
             </div>
           </div>
