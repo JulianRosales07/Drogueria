@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { DataTable } from '../../../components/ui/DataTable'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { ProductFormModal } from '../components/ProductFormModal'
+import { ProductDetailModal } from '../components/ProductDetailModal'
 import { ImportInventoryModal } from '../components/ImportInventoryModal'
 import { downloadInventoryTemplate } from '../../../services/excel/inventoryTemplate'
 import { listProducts, deleteProduct, type Product } from '../../../services/api/products'
@@ -26,6 +27,7 @@ export function InventoryPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [importModalOpen, setImportModalOpen] = useState(false)
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null)
 
   const productsQuery = useQuery({
     queryKey: ['products'],
@@ -103,6 +105,15 @@ export function InventoryPage() {
         id: 'actions',
         cell: ({ row }) => (
           <div className="flex items-center gap-3">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setViewingProduct(row.original)
+              }}
+              className="text-sm font-medium text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white"
+            >
+              Ver
+            </button>
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -214,6 +225,11 @@ export function InventoryPage() {
       </SectionCard>
 
       <ProductFormModal open={modalOpen} product={editingProduct} onClose={handleClose} />
+      <ProductDetailModal
+        open={Boolean(viewingProduct)}
+        product={viewingProduct}
+        onClose={() => setViewingProduct(null)}
+      />
       <ImportInventoryModal open={importModalOpen} onClose={() => setImportModalOpen(false)} />
     </div>
   )

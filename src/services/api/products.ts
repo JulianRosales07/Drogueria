@@ -5,6 +5,7 @@ export type ProductUnit = {
   productId: string;
   name: string;
   factor: number;
+  cost: number;
   price: number;
   barcode: string | null;
 };
@@ -30,6 +31,7 @@ export type Product = {
 export type CreateProductUnitInput = {
   name: string;
   factor: number;
+  cost: number;
   price: number;
   barcode?: string | null;
 };

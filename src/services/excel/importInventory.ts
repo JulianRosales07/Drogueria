@@ -69,6 +69,7 @@ export async function importInventoryRows(
         await createProductUnit(product.id, {
           name: presentation.name,
           factor: presentation.factor,
+          cost: presentation.cost,
           price: presentation.price,
           barcode: presentation.barcode || undefined,
         })

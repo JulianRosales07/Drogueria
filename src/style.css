@@ -40,3 +40,15 @@ input,
 select {
   font: inherit;
 }
+
+/*
+ * Muchos formularios usan la utilidad Tailwind `focus:bg-white`, pensada solo
+ * para modo claro. En modo oscuro el texto de esos inputs es blanco
+ * (`dark:text-white`), así que al enfocarlos el fondo se vuelve blanco y el
+ * texto queda invisible. Esta regla restaura el fondo oscuro al enfocar.
+ */
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  background-color: #1e293b !important; /* slate-800, mismo tono que dark:bg-slate-800 */
+}

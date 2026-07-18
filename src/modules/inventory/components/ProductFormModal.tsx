@@ -106,7 +106,7 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
     setShowNewCategory(false)
     setNewCategoryName('')
     setDraftUnits([])
-    setNewUnit({ name: '', factor: '', price: '', barcode: '' })
+    setNewUnit({ name: '', factor: '', cost: '', price: '', barcode: '' })
   }, [open, product, reset])
 
   const createCategoryMutation = useMutation({
@@ -153,6 +153,7 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
         await createProductUnit(created.id, {
           name: draft.name,
           factor: draft.factor,
+          cost: draft.cost,
           price: draft.price,
           barcode: draft.barcode || undefined,
         })
@@ -189,7 +190,7 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
   // En modo edición se guardan/eliminan directo contra la API.
   // En modo creación se acumulan como "borrador" y se envían justo después
   // de crear el producto (porque product_units necesita el productId).
-  type DraftUnit = { name: string; factor: number; price: number; barcode: string }
+  type DraftUnit = { name: string; factor: number; cost: number; price: number; barcode: string }
 
   const unitsQuery = useQuery({
     queryKey: ['product-units', product?.id],
@@ -198,7 +199,7 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
   })
 
   const [draftUnits, setDraftUnits] = useState<DraftUnit[]>([])
-  const [newUnit, setNewUnit] = useState({ name: '', factor: '', price: '', barcode: '' })
+  const [newUnit, setNewUnit] = useState({ name: '', factor: '', cost: '', price: '', barcode: '' })
 
   const addUnitMutation = useMutation({
     mutationFn: async () => {
@@ -206,6 +207,7 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
       return createProductUnit(product.id, {
         name: newUnit.name.trim(),
         factor: Number(newUnit.factor),
+        cost: Number(newUnit.cost),
         price: Number(newUnit.price),
         barcode: newUnit.barcode.trim() || undefined,
       })
@@ -213,7 +215,7 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-units', product?.id] })
       queryClient.invalidateQueries({ queryKey: ['products'] })
-      setNewUnit({ name: '', factor: '', price: '', barcode: '' })
+      setNewUnit({ name: '', factor: '', cost: '', price: '', barcode: '' })
       toast.success('Presentación agregada')
     },
     onError: (error: any) => {
@@ -235,6 +237,7 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
 
   const validateNewUnit = (): DraftUnit | null => {
     const factor = Number(newUnit.factor)
+    const cost = Number(newUnit.cost)
     const price = Number(newUnit.price)
     if (!newUnit.name.trim()) {
       toast.error('Ingresa el nombre de la presentación (ej. Caja x10)')
@@ -244,11 +247,15 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
       toast.error('El factor debe ser mayor a 1 (unidades que contiene)')
       return null
     }
+    if (newUnit.cost.trim() === '' || cost < 0) {
+      toast.error('Ingresa el costo de la presentación')
+      return null
+    }
     if (!price || price <= 0) {
       toast.error('Ingresa el precio de venta de la presentación')
       return null
     }
-    return { name: newUnit.name.trim(), factor, price, barcode: newUnit.barcode.trim() }
+    return { name: newUnit.name.trim(), factor, cost, price, barcode: newUnit.barcode.trim() }
   }
 
   const handleAddUnit = () => {
@@ -259,7 +266,7 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
       addUnitMutation.mutate()
     } else {
       setDraftUnits((current) => [...current, draft])
-      setNewUnit({ name: '', factor: '', price: '', barcode: '' })
+      setNewUnit({ name: '', factor: '', cost: '', price: '', barcode: '' })
     }
   }
 
@@ -282,7 +289,7 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl dark:bg-slate-900">
+      <div className="w-full max-w-3xl rounded-xl bg-white shadow-xl dark:bg-slate-900">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             {isEditing ? 'Editar producto' : 'Nuevo producto'}
@@ -468,18 +475,35 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
           </div>
 
           <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">
               Presentaciones de venta
             </h3>
-            <p className="mt-1 text-xs text-slate-400">
-              La "Unidad" siempre existe con el precio base. Agrega otras presentaciones como
-              "Caja x10" o "Caja completa" con su propio precio y código de barras.
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              La "Unidad" siempre existe con el costo y precio base del producto. Agrega otras
+              presentaciones como "Caja x10" o "Caja completa", cada una con su propio costo,
+              precio de venta y código de barras.
             </p>
 
-            <div className="mt-3 space-y-2">
-              <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800/60">
-                <span className="font-medium text-slate-700 dark:text-slate-200">Unidad (base)</span>
-                <span className="text-slate-500 dark:text-slate-400">{money(Number(product?.price ?? 0))}</span>
+            <div className="mt-3 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-800/60">
+                <div>
+                  <p className="font-medium text-slate-800 dark:text-slate-100">Unidad (base)</p>
+                  <p className="mt-0.5 text-xs text-slate-400">Presentación individual del producto</p>
+                </div>
+                <div className="flex items-center gap-5">
+                  <div className="text-right text-sm">
+                    <p className="text-xs text-slate-400">Costo</p>
+                    <p className="font-medium text-slate-700 dark:text-slate-200">
+                      {money(Number(product?.cost ?? 0))}
+                    </p>
+                  </div>
+                  <div className="text-right text-sm">
+                    <p className="text-xs text-slate-400">Precio</p>
+                    <p className="font-medium text-slate-700 dark:text-slate-200">
+                      {money(Number(product?.price ?? 0))}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {isEditing ? (
@@ -490,21 +514,28 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
                   {(unitsQuery.data ?? []).map((unit) => (
                     <div
                       key={unit.id}
-                      className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 px-4 py-3 text-sm dark:border-slate-700"
                     >
                       <div>
-                        <span className="font-medium text-slate-700 dark:text-slate-200">{unit.name}</span>
-                        <span className="ml-2 text-xs text-slate-400">x{unit.factor} unidades</span>
-                        {unit.barcode && (
-                          <span className="ml-2 text-xs text-slate-400">· {unit.barcode}</span>
-                        )}
+                        <p className="font-medium text-slate-800 dark:text-slate-100">{unit.name}</p>
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          Contiene {unit.factor} unidades{unit.barcode ? ` · Código ${unit.barcode}` : ''}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-slate-500 dark:text-slate-400">{money(unit.price)}</span>
+                      <div className="flex items-center gap-5">
+                        <div className="text-right text-sm">
+                          <p className="text-xs text-slate-400">Costo</p>
+                          <p className="font-medium text-slate-700 dark:text-slate-200">{money(unit.cost)}</p>
+                        </div>
+                        <div className="text-right text-sm">
+                          <p className="text-xs text-slate-400">Precio</p>
+                          <p className="font-medium text-slate-700 dark:text-slate-200">{money(unit.price)}</p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => deleteUnitMutation.mutate(unit.id)}
-                          className="text-red-500 hover:text-red-700"
+                          className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-500/10"
+                          title="Eliminar presentación"
                         >
                           ✕
                         </button>
@@ -522,21 +553,28 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
                   {draftUnits.map((unit, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 px-4 py-3 text-sm dark:border-slate-700"
                     >
                       <div>
-                        <span className="font-medium text-slate-700 dark:text-slate-200">{unit.name}</span>
-                        <span className="ml-2 text-xs text-slate-400">x{unit.factor} unidades</span>
-                        {unit.barcode && (
-                          <span className="ml-2 text-xs text-slate-400">· {unit.barcode}</span>
-                        )}
+                        <p className="font-medium text-slate-800 dark:text-slate-100">{unit.name}</p>
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          Contiene {unit.factor} unidades{unit.barcode ? ` · Código ${unit.barcode}` : ''}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-slate-500 dark:text-slate-400">{money(unit.price)}</span>
+                      <div className="flex items-center gap-5">
+                        <div className="text-right text-sm">
+                          <p className="text-xs text-slate-400">Costo</p>
+                          <p className="font-medium text-slate-700 dark:text-slate-200">{money(unit.cost)}</p>
+                        </div>
+                        <div className="text-right text-sm">
+                          <p className="text-xs text-slate-400">Precio</p>
+                          <p className="font-medium text-slate-700 dark:text-slate-200">{money(unit.price)}</p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => removeDraftUnit(index)}
-                          className="text-red-500 hover:text-red-700"
+                          className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-500/10"
+                          title="Quitar presentación"
                         >
                           ✕
                         </button>
@@ -547,44 +585,85 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
               )}
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-              <input
-                placeholder="Nombre (Caja x10)"
-                value={newUnit.name}
-                onChange={(e) => setNewUnit((u) => ({ ...u, name: e.target.value }))}
-                className="col-span-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:col-span-1"
-              />
-              <input
-                type="number"
-                min="2"
-                placeholder="Unidades"
-                value={newUnit.factor}
-                onChange={(e) => setNewUnit((u) => ({ ...u, factor: e.target.value }))}
-                className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Precio"
-                value={newUnit.price}
-                onChange={(e) => setNewUnit((u) => ({ ...u, price: e.target.value }))}
-                className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-              <input
-                placeholder="Código barras"
-                value={newUnit.barcode}
-                onChange={(e) => setNewUnit((u) => ({ ...u, barcode: e.target.value }))}
-                className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-              <button
-                type="button"
-                onClick={handleAddUnit}
-                disabled={addUnitMutation.isPending}
-                className="rounded-md bg-slate-900 px-2.5 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-white dark:text-slate-900"
-              >
-                + Agregar
-              </button>
+            <div className="mt-4 rounded-lg border border-dashed border-slate-300 p-4 dark:border-slate-700">
+              <p className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-200">
+                Agregar nueva presentación
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Nombre
+                  </span>
+                  <input
+                    placeholder="Ej. Caja x10"
+                    value={newUnit.name}
+                    onChange={(e) => setNewUnit((u) => ({ ...u, name: e.target.value }))}
+                    className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Unidades que contiene
+                  </span>
+                  <input
+                    type="number"
+                    min="2"
+                    placeholder="Ej. 10"
+                    value={newUnit.factor}
+                    onChange={(e) => setNewUnit((u) => ({ ...u, factor: e.target.value }))}
+                    className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Costo de la presentación
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="$ 0"
+                    value={newUnit.cost}
+                    onChange={(e) => setNewUnit((u) => ({ ...u, cost: e.target.value }))}
+                    className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Precio de venta
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="$ 0"
+                    value={newUnit.price}
+                    onChange={(e) => setNewUnit((u) => ({ ...u, price: e.target.value }))}
+                    className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+                <label className="block sm:col-span-2 lg:col-span-3">
+                  <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Código de barras (opcional)
+                  </span>
+                  <input
+                    placeholder="Código propio de esta presentación"
+                    value={newUnit.barcode}
+                    onChange={(e) => setNewUnit((u) => ({ ...u, barcode: e.target.value }))}
+                    className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </label>
+                <div className="flex items-end sm:col-span-2 lg:col-span-1">
+                  <button
+                    type="button"
+                    onClick={handleAddUnit}
+                    disabled={addUnitMutation.isPending}
+                    className="w-full rounded-md bg-slate-900 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-white dark:text-slate-900"
+                  >
+                    + Agregar presentación
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

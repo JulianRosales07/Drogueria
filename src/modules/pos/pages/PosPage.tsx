@@ -5,6 +5,7 @@ import { useReactToPrint } from 'react-to-print'
 import { Receipt } from '../../../components/Receipt'
 import { listProducts, type Product } from '../../../services/api/products'
 import { createSale, type Sale } from '../../../services/api/sales'
+import { listCustomers, type Customer } from '../../../services/api/customers'
 import { useReceiptConfig } from '../../../hooks/useReceiptConfig'
 
 type CartItem = {
@@ -65,10 +66,17 @@ export function PosPage() {
     queryFn: listProducts,
   })
 
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: listCustomers,
+  })
+
   const [cart, setCart] = useState<CartItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [paymentAmount, setPaymentAmount] = useState('')
   const [customerName, setCustomerName] = useState('')
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false)
   const [completedSale, setCompletedSale] = useState<Sale | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
   const [lastSale, setLastSale] = useState<Sale | null>(null)
@@ -87,6 +95,7 @@ export function PosPage() {
       setSearchQuery('')
       setPaymentAmount('')
       setCustomerName('')
+      setSelectedCustomerId(null)
       setTicketNumber((n) => n + 1)
       queryClient.invalidateQueries({ queryKey: ['products'] })
       queryClient.invalidateQueries({ queryKey: ['sales'] })
@@ -127,6 +136,19 @@ export function PosPage() {
       )
       .slice(0, 8)
   }, [products, searchQuery])
+
+  const filteredCustomers = useMemo(() => {
+    const query = customerName.trim().toLowerCase()
+    if (!query) return []
+    return customers
+      .filter(
+        (c) =>
+          c.fullName.toLowerCase().includes(query) ||
+          c.document?.toLowerCase().includes(query) ||
+          c.code.toLowerCase().includes(query),
+      )
+      .slice(0, 6)
+  }, [customers, customerName])
 
   const playBeep = () => {
     try {
@@ -263,6 +285,7 @@ export function PosPage() {
       setSearchQuery('')
       setPaymentAmount('')
       setCustomerName('')
+      setSelectedCustomerId(null)
       searchInputRef.current?.focus()
       toast.success('Venta limpiada')
     }
@@ -295,7 +318,8 @@ export function PosPage() {
       return
     }
     createSaleMutation.mutate({
-      customerName: customerName.trim() || undefined,
+      customerId: selectedCustomerId ?? undefined,
+      customerName: !selectedCustomerId ? customerName.trim() || undefined : undefined,
       items: cart.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -499,26 +523,68 @@ export function PosPage() {
 
         {/* ===== Barra de cobro inferior ===== */}
         <div className="border-t border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
-          {/* Nombre del cliente (opcional) */}
-          <div className="mb-3 flex items-center gap-2">
+          {/* Cliente (autocompleta desde la base de clientes registrados) */}
+          <div className="relative mb-3 flex items-center gap-2">
             <span className="shrink-0 text-xs font-medium text-slate-400">👤 Cliente</span>
             <input
               type="text"
               value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && focusPayment()}
-              placeholder="Nombre del cliente (opcional)"
+              onChange={(e) => {
+                setCustomerName(e.target.value)
+                setSelectedCustomerId(null)
+                setShowCustomerSuggestions(true)
+              }}
+              onFocus={() => setShowCustomerSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowCustomerSuggestions(false), 100)}
+              onKeyDown={(e) => e.key === 'Enter' && !showCustomerSuggestions && focusPayment()}
+              placeholder="Busca un cliente registrado o escribe uno nuevo (opcional)"
               className="flex-1 border-b border-slate-200 bg-transparent pb-0.5 text-sm text-slate-700 placeholder-slate-300 focus:border-blue-400 focus:outline-none dark:border-slate-700 dark:text-slate-200 dark:placeholder-slate-500"
             />
+            {selectedCustomerId && (
+              <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                Registrado
+              </span>
+            )}
             {customerName && (
               <button
                 type="button"
-                onClick={() => setCustomerName('')}
+                onClick={() => {
+                  setCustomerName('')
+                  setSelectedCustomerId(null)
+                }}
                 className="text-slate-300 hover:text-slate-500"
                 tabIndex={-1}
               >
                 ✕
               </button>
+            )}
+
+            {showCustomerSuggestions && filteredCustomers.length > 0 && (
+              <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                {filteredCustomers.map((customer) => (
+                  <button
+                    key={customer.id}
+                    type="button"
+                    onClick={() => {
+                      setCustomerName(customer.fullName)
+                      setSelectedCustomerId(customer.id)
+                      setShowCustomerSuggestions(false)
+                    }}
+                    className="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left text-sm transition last:border-0 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-900 dark:text-white">{customer.fullName}</p>
+                      <p className="text-xs text-slate-400">
+                        {customer.code}
+                        {customer.document ? ` · ${customer.document}` : ''}
+                      </p>
+                    </div>
+                    {customer.phone && (
+                      <span className="shrink-0 text-xs text-slate-400">{customer.phone}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
