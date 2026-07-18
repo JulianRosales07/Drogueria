@@ -5,7 +5,7 @@ import { useReactToPrint } from 'react-to-print'
 import { Receipt } from '../../../components/Receipt'
 import { listProducts, type Product } from '../../../services/api/products'
 import { createSale, type Sale } from '../../../services/api/sales'
-import { listCustomers, type Customer } from '../../../services/api/customers'
+import { listCustomers } from '../../../services/api/customers'
 import { useReceiptConfig } from '../../../hooks/useReceiptConfig'
 
 type CartItem = {
