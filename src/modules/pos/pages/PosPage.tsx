@@ -1,13 +1,10 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useReactToPrint } from 'react-to-print'
 import { Receipt } from '../../../components/Receipt'
-import { CapsulaLogo } from '../../../components/CapsulaLogo'
 import { listProducts, type Product } from '../../../services/api/products'
 import { createSale, type Sale } from '../../../services/api/sales'
-import { useUiStore } from '../../../store/ui-store'
 import { useReceiptConfig } from '../../../hooks/useReceiptConfig'
 
 type CartItem = {
@@ -55,19 +52,8 @@ function money(value: number) {
   }).format(value)
 }
 
-const toolbarActions = [
-  { label: 'Ventas', shortcut: 'F1', emoji: '🧾', to: '/pos' },
-  { label: 'Clientes', shortcut: '', emoji: '👤', to: '/clientes' },
-  { label: 'Productos', shortcut: 'F3', emoji: '📦', to: '/inventario' },
-  { label: 'Compras', shortcut: '', emoji: '🛒', to: '/compras' },
-  { label: 'Reportes', shortcut: '', emoji: '📊', to: '/reportes' },
-  { label: 'Config', shortcut: '', emoji: '⚙️', to: '/configuracion' },
-]
-
 export function PosPage() {
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const logout = useUiStore((state) => state.logout)
   const receiptRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const paymentInputRef = useRef<HTMLInputElement>(null)
@@ -350,70 +336,23 @@ export function PosPage() {
     setShowReceipt(true)
   }
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login', { replace: true })
-  }
-
   return (
     <>
-      <div className="flex h-screen flex-col bg-slate-50 text-slate-900">
-        {/* ===== Barra superior: marca + usuario ===== */}
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2">
-          <div className="flex items-center gap-2">
-            <CapsulaLogo className="h-8 w-8" />
-            <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-900">Cápsula POS</p>
-              <p className="text-xs text-slate-400">Ticket #{ticketNumber}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-slate-500">
-            <span>{new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="rounded-md border border-slate-200 px-3 py-1.5 font-medium text-slate-600 transition hover:bg-slate-50"
-            >
-              Panel admin
-            </button>
-            <button
-              onClick={handleLogout}
-              className="rounded-md border border-slate-200 px-3 py-1.5 font-medium text-slate-600 transition hover:bg-slate-50"
-            >
-              Salir
-            </button>
-          </div>
-        </header>
-
+      <div className="flex h-full flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white">
         {/* ===== Barra de herramientas (estilo Eleventa: una sola fila plana) ===== */}
-        <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-white px-3 py-1.5">
-          {toolbarActions.map((action) => (
-            <button
-              key={action.label}
-              onClick={() => navigate(action.to)}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                action.to === '/pos'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <span className="text-base leading-none">{action.emoji}</span>
-              {action.label}
-              {action.shortcut && (
-                <span className="text-xs text-slate-400">{action.shortcut}</span>
-              )}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-white px-3 py-1.5 dark:border-slate-800 dark:bg-slate-900">
+          <span className="mr-2 text-xs font-medium text-slate-400">Ticket #{ticketNumber}</span>
 
           <div className="ml-auto flex items-center gap-1">
             <button
               onClick={clearCart}
-              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               🗑️ Limpiar <span className="text-xs text-slate-400">F8</span>
             </button>
             <button
               onClick={reprintLast}
-              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               🖨️ Reimprimir
             </button>
@@ -421,9 +360,9 @@ export function PosPage() {
         </div>
 
         {/* ===== Buscador de producto ===== */}
-        <div className="relative border-b border-slate-200 bg-white px-4 py-3">
+        <div className="relative border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-slate-500">Código / Producto</span>
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Código / Producto</span>
             <div className="flex-1">
               <input
                 ref={searchInputRef}
@@ -432,7 +371,7 @@ export function PosPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
                 placeholder="Escanea o escribe el nombre / código…"
-                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-base focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-base text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-blue-500/20"
                 autoComplete="off"
               />
             </div>
@@ -440,16 +379,16 @@ export function PosPage() {
           </div>
 
           {searchQuery && filteredProducts.length > 0 && (
-            <div className="absolute left-4 right-4 top-full z-20 mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+            <div className="absolute left-4 right-4 top-full z-20 mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
               {filteredProducts.map((product) => (
                 <button
                   key={product.id}
                   onClick={() => addProductToCart(product)}
-                  className="flex w-full items-center justify-between gap-4 border-b border-slate-100 px-4 py-2.5 text-left transition last:border-0 hover:bg-slate-50"
+                  className="flex w-full items-center justify-between gap-4 border-b border-slate-100 px-4 py-2.5 text-left transition last:border-0 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700"
                 >
                   <div className="min-w-0">
                     <p className="text-xs text-slate-400">{product.sku}</p>
-                    <p className="truncate text-sm font-medium text-slate-900">{product.name}</p>
+                    <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{product.name}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-4">
                     <span
@@ -460,11 +399,11 @@ export function PosPage() {
                       Stock {product.stock}
                     </span>
                     {product.units.length > 0 ? (
-                      <span className="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600">
+                      <span className="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
                         {product.units.length + 1} presentaciones
                       </span>
                     ) : (
-                      <span className="text-sm font-semibold text-slate-900">{money(product.price)}</span>
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white">{money(product.price)}</span>
                     )}
                   </div>
                 </button>
@@ -473,14 +412,14 @@ export function PosPage() {
           )}
 
           {searchQuery && filteredProducts.length === 0 && (
-            <div className="absolute left-4 right-4 top-full z-20 mt-1 rounded-lg border border-slate-200 bg-white p-3 text-center text-sm text-slate-400 shadow-lg">
+            <div className="absolute left-4 right-4 top-full z-20 mt-1 rounded-lg border border-slate-200 bg-white p-3 text-center text-sm text-slate-400 shadow-lg dark:border-slate-700 dark:bg-slate-800">
               Sin resultados para “{searchQuery}”
             </div>
           )}
         </div>
 
         {/* ===== Ticket ===== */}
-        <div className="flex-1 overflow-y-auto bg-white">
+        <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-900">
           {cart.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
               <div className="text-5xl">🧾</div>
@@ -489,7 +428,7 @@ export function PosPage() {
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-2 text-left font-medium">Código</th>
                   <th className="px-4 py-2 text-left font-medium">Descripción</th>
@@ -501,12 +440,15 @@ export function PosPage() {
               </thead>
               <tbody>
                 {cart.map((item, index) => (
-                  <tr key={`${item.productId}-${item.unitFactor}`} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-4 py-2 text-slate-500">{item.sku}</td>
-                    <td className="px-4 py-2 font-medium text-slate-900">
+                  <tr
+                    key={`${item.productId}-${item.unitFactor}`}
+                    className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
+                  >
+                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{item.sku}</td>
+                    <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
                       {item.name}
                       {item.unitLabel !== 'Unidad' && (
-                        <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-600">
+                        <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
                           {item.unitLabel}
                         </span>
                       )}
@@ -515,7 +457,7 @@ export function PosPage() {
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => updateQuantity(index, item.quantity - 1)}
-                          className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100"
+                          className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
                         >
                           −
                         </button>
@@ -523,21 +465,21 @@ export function PosPage() {
                           type="number"
                           value={item.quantity}
                           onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
-                          className="w-12 rounded border border-slate-200 py-0.5 text-center focus:border-blue-500 focus:outline-none"
+                          className="w-12 rounded border border-slate-200 bg-white py-0.5 text-center text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                           min={1}
                           max={Math.floor(item.stock / item.unitFactor)}
                         />
                         <button
                           onClick={() => updateQuantity(index, item.quantity + 1)}
                           disabled={(item.quantity + 1) * item.unitFactor > item.stock}
-                          className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40"
+                          className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
                         >
                           +
                         </button>
                       </div>
                     </td>
-                    <td className="px-4 py-2 text-right text-slate-600">{money(item.price)}</td>
-                    <td className="px-4 py-2 text-right font-semibold text-slate-900">
+                    <td className="px-4 py-2 text-right text-slate-600 dark:text-slate-300">{money(item.price)}</td>
+                    <td className="px-4 py-2 text-right font-semibold text-slate-900 dark:text-white">
                       {money(item.quantity * item.price)}
                     </td>
                     <td className="px-2 py-2 text-center">
@@ -556,7 +498,7 @@ export function PosPage() {
         </div>
 
         {/* ===== Barra de cobro inferior ===== */}
-        <div className="border-t border-slate-200 bg-white px-4 py-3">
+        <div className="border-t border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
           {/* Nombre del cliente (opcional) */}
           <div className="mb-3 flex items-center gap-2">
             <span className="shrink-0 text-xs font-medium text-slate-400">👤 Cliente</span>
@@ -566,7 +508,7 @@ export function PosPage() {
               onChange={(e) => setCustomerName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && focusPayment()}
               placeholder="Nombre del cliente (opcional)"
-              className="flex-1 border-b border-slate-200 bg-transparent pb-0.5 text-sm text-slate-700 placeholder-slate-300 focus:border-blue-400 focus:outline-none"
+              className="flex-1 border-b border-slate-200 bg-transparent pb-0.5 text-sm text-slate-700 placeholder-slate-300 focus:border-blue-400 focus:outline-none dark:border-slate-700 dark:text-slate-200 dark:placeholder-slate-500"
             />
             {customerName && (
               <button
@@ -583,7 +525,7 @@ export function PosPage() {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div>
               <p className="text-xs font-medium text-slate-400">Total</p>
-              <p className="text-2xl font-semibold text-slate-900">{money(total)}</p>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-white">{money(total)}</p>
             </div>
             <div>
               <label className="text-xs font-medium text-slate-400">Pagó con</label>
@@ -594,7 +536,7 @@ export function PosPage() {
                 onChange={(e) => setPaymentAmount(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleConfirmPayment()}
                 placeholder={total > 0 ? String(total) : '0'}
-                className="w-full border-b-2 border-slate-200 bg-transparent text-2xl font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
+                className="w-full border-b-2 border-slate-200 bg-transparent text-2xl font-semibold text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:text-white"
               />
             </div>
             <div>
@@ -619,7 +561,7 @@ export function PosPage() {
               type="checkbox"
               checked={autoPrintEnabled}
               onChange={(e) => setAutoPrintEnabled(e.target.checked)}
-              className="rounded border-slate-300"
+              className="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800"
             />
             Imprimir automáticamente al cobrar
           </label>
@@ -629,8 +571,8 @@ export function PosPage() {
       {/* ===== Modal de selección de presentación ===== */}
       {presentationPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="text-lg font-semibold text-slate-900">{presentationPicker.name}</h2>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{presentationPicker.name}</h2>
             <p className="mt-1 text-sm text-slate-400">Elige la presentación a vender</p>
 
             <div className="mt-4 space-y-2">
@@ -642,22 +584,22 @@ export function PosPage() {
                     setPresentationPicker(null)
                   }}
                   disabled={presentation.factor > presentationPicker.stock}
-                  className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-left transition hover:border-blue-500 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-left transition hover:border-blue-500 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-blue-500/10"
                 >
                   <div>
-                    <p className="font-medium text-slate-900">{presentation.label}</p>
+                    <p className="font-medium text-slate-900 dark:text-white">{presentation.label}</p>
                     <p className="text-xs text-slate-400">
                       {presentation.factor > 1 ? `${presentation.factor} unidades` : '1 unidad'}
                     </p>
                   </div>
-                  <span className="text-lg font-semibold text-slate-900">{money(presentation.price)}</span>
+                  <span className="text-lg font-semibold text-slate-900 dark:text-white">{money(presentation.price)}</span>
                 </button>
               ))}
             </div>
 
             <button
               onClick={() => setPresentationPicker(null)}
-              className="mt-4 w-full rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100"
+              className="mt-4 w-full rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
             >
               Cancelar
             </button>
@@ -668,10 +610,10 @@ export function PosPage() {
       {/* ===== Modal de recibo ===== */}
       {showReceipt && completedSale && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
                   ✓
                 </span>
                 Venta completada
@@ -682,13 +624,13 @@ export function PosPage() {
                   setCompletedSale(null)
                   searchInputRef.current?.focus()
                 }}
-                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
               >
                 ✕
               </button>
             </div>
 
-            <div className="mb-4 max-h-[55vh] overflow-auto rounded-xl bg-slate-50 p-3">
+            <div className="mb-4 max-h-[55vh] overflow-auto rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
               <Receipt
                 ref={receiptRef}
                 saleId={completedSale.id}
@@ -718,7 +660,7 @@ export function PosPage() {
             <div className="flex gap-3">
               <button
                 onClick={handlePrint}
-                className="flex-1 rounded-lg bg-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-800"
+                className="flex-1 rounded-lg bg-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
               >
                 🖨️ Imprimir
               </button>
@@ -728,7 +670,7 @@ export function PosPage() {
                   setCompletedSale(null)
                   searchInputRef.current?.focus()
                 }}
-                className="rounded-lg px-4 py-2.5 font-medium text-slate-600 transition hover:bg-slate-100"
+                className="rounded-lg px-4 py-2.5 font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Cerrar
               </button>

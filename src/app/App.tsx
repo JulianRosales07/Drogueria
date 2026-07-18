@@ -38,16 +38,6 @@ function PublicRoute() {
   return <LoginPage />
 }
 
-function ProtectedRoute({ children }: { children: ReactNode }) {
-  const isAuthenticated = useUiStore((state) => state.isAuthenticated)
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
-
-  return children
-}
-
 /** Ruta solo accesible para el Super Administrador */
 function SuperAdminRoute({ children }: { children: ReactNode }) {
   const isAuthenticated = useUiStore((state) => state.isAuthenticated)
@@ -88,21 +78,20 @@ export function App() {
     <Routes>
       <Route path="/login" element={<PublicRoute />} />
 
-      {/* POS es pantalla completa, sin el sidebar del panel administrativo */}
-      <Route
-        path="/pos"
-        element={
-          <ProtectedRoute>
-            <PosPage />
-          </ProtectedRoute>
-        }
-      />
-
       <Route element={<ProtectedLayout />}>
         {/* Redirigir raíz según el rol */}
         <Route
           path="/"
           element={<Navigate to={isSuperAdmin ? '/droguerias' : '/dashboard'} replace />}
+        />
+
+        <Route
+          path="/pos"
+          element={
+            <BusinessRoute>
+              <PosPage />
+            </BusinessRoute>
+          }
         />
 
         {/* Módulos exclusivos del Super Administrador */}
