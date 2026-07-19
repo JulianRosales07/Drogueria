@@ -30,6 +30,7 @@ export type Sale = {
   status: string;
   created_at: string;
   customers?: { full_name: string } | null;
+  users?: { full_name: string } | null;
   sale_items: Array<{
     id: string;
     product_id: string;
@@ -48,7 +49,9 @@ export async function createSale(input: CreateSaleInput): Promise<Sale> {
   return data.data;
 }
 
-export async function listSales(): Promise<Sale[]> {
-  const { data } = await apiClient.get<{ success: boolean; data: Sale[] }>('/sales');
+export async function listSales(userId?: string): Promise<Sale[]> {
+  const { data } = await apiClient.get<{ success: boolean; data: Sale[] }>('/sales', {
+    params: userId ? { userId } : undefined,
+  });
   return data.data;
 }

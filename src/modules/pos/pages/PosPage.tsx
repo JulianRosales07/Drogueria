@@ -1,11 +1,13 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { useReactToPrint } from 'react-to-print'
 import { Receipt } from '../../../components/Receipt'
 import { listProducts, type Product } from '../../../services/api/products'
-import { createSale, type Sale } from '../../../services/api/sales'
+import { createSale, listSales, type Sale } from '../../../services/api/sales'
 import { listCustomers } from '../../../services/api/customers'
+import { getCurrentCashRegister, listCashRegisterHistory } from '../../../services/api/cash-registers'
 import { useReceiptConfig } from '../../../hooks/useReceiptConfig'
 
 type CartItem = {
@@ -53,6 +55,27 @@ function money(value: number) {
   }).format(value)
 }
 
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+}
+
+function isSameDay(dateStr: string) {
+  const d = new Date(dateStr)
+  const now = new Date()
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  )
+}
+
+type ProductSalesSummary = {
+  productName: string
+  unitLabel: string
+  quantity: number
+  total: number
+}
+
 export function PosPage() {
   const queryClient = useQueryClient()
   const receiptRef = useRef<HTMLDivElement>(null)
@@ -69,6 +92,25 @@ export function PosPage() {
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: listCustomers,
+  })
+
+  const cashRegisterQuery = useQuery({
+    queryKey: ['cash-register-current'],
+    queryFn: getCurrentCashRegister,
+    refetchInterval: 30000,
+  })
+  const isRegisterOpen = Boolean(cashRegisterQuery.data)
+
+  const [showDailySales, setShowDailySales] = useState(false)
+  const dailySalesQuery = useQuery({
+    queryKey: ['sales'],
+    queryFn: listSales,
+    enabled: showDailySales,
+  })
+  const registerHistoryQuery = useQuery({
+    queryKey: ['cash-register-history'],
+    queryFn: listCashRegisterHistory,
+    enabled: showDailySales,
   })
 
   const [cart, setCart] = useState<CartItem[]>([])
@@ -300,6 +342,10 @@ export function PosPage() {
   const change = paidAmount - total
 
   const focusPayment = () => {
+    if (!isRegisterOpen) {
+      toast.error('Debes abrir la caja antes de cobrar')
+      return
+    }
     if (cart.length === 0) {
       toast.error('Agrega productos para cobrar')
       return
@@ -309,6 +355,10 @@ export function PosPage() {
   }
 
   const handleConfirmPayment = () => {
+    if (!isRegisterOpen) {
+      toast.error('Debes abrir la caja antes de cobrar')
+      return
+    }
     if (cart.length === 0) {
       toast.error('El carrito está vacío')
       return
@@ -369,6 +419,12 @@ export function PosPage() {
 
           <div className="ml-auto flex items-center gap-1">
             <button
+              onClick={() => setShowDailySales(true)}
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              📅 Ventas del día
+            </button>
+            <button
               onClick={clearCart}
               className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
             >
@@ -382,6 +438,18 @@ export function PosPage() {
             </button>
           </div>
         </div>
+
+        {!cashRegisterQuery.isLoading && !isRegisterOpen && (
+          <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+            <span>⚠️ La caja está cerrada. Debes abrirla antes de poder cobrar.</span>
+            <Link
+              to="/caja"
+              className="shrink-0 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700"
+            >
+              Abrir caja
+            </Link>
+          </div>
+        )}
 
         {/* ===== Buscador de producto ===== */}
         <div className="relative border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
@@ -614,7 +682,7 @@ export function PosPage() {
             <div className="flex items-center justify-end">
               <button
                 onClick={handleConfirmPayment}
-                disabled={cart.length === 0 || createSaleMutation.isPending}
+                disabled={!isRegisterOpen || cart.length === 0 || createSaleMutation.isPending}
                 className="flex h-full min-h-14 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 text-lg font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:min-w-40"
               >
                 Cobrar <span className="text-sm font-normal opacity-80">F9</span>
@@ -633,6 +701,197 @@ export function PosPage() {
           </label>
         </div>
       </div>
+
+      {/* ===== Modal de ventas del día ===== */}
+      {showDailySales && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Ventas del día</h2>
+              <button
+                onClick={() => setShowDailySales(false)}
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+              >
+                ✕
+              </button>
+            </div>
+
+            {dailySalesQuery.isLoading || registerHistoryQuery.isLoading ? (
+              <div className="py-10 text-center text-sm text-slate-400">Cargando ventas…</div>
+            ) : (
+              (() => {
+                const currentRegister = cashRegisterQuery.data
+                // Último turno cerrado hoy (si existe), para usar como respaldo cuando la caja está cerrada.
+                const lastClosedToday = (registerHistoryQuery.data ?? [])
+                  .filter((r) => r.status === 'CLOSED' && r.closedAt && isSameDay(r.closedAt))
+                  .sort((a, b) => new Date(b.closedAt!).getTime() - new Date(a.closedAt!).getTime())[0]
+
+                // Alcance del resumen: SIEMPRE un turno específico, nunca el día completo mezclado.
+                // 1) Si hay caja abierta: ventas desde que se abrió ese turno.
+                // 2) Si no hay caja abierta: ventas del último turno cerrado hoy (desde su apertura hasta su cierre).
+                // 3) Si no hay ningún turno hoy: no hay ventas que mostrar.
+                const scopeStart = currentRegister?.openedAt ?? lastClosedToday?.openedAt ?? null
+                const scopeEnd = currentRegister ? null : lastClosedToday?.closedAt ?? null
+
+                const scopedSales = scopeStart
+                  ? (dailySalesQuery.data ?? []).filter((sale) => {
+                      const createdAt = new Date(sale.created_at).getTime()
+                      if (createdAt < new Date(scopeStart).getTime()) return false
+                      if (scopeEnd && createdAt > new Date(scopeEnd).getTime()) return false
+                      return true
+                    })
+                  : []
+
+                const totalToday = scopedSales.reduce((sum, sale) => sum + sale.total, 0)
+                const itemsToday = scopedSales.reduce(
+                  (sum, sale) => sum + sale.sale_items.reduce((iSum, item) => iSum + item.unit_quantity, 0),
+                  0,
+                )
+
+                // Agrupar por producto + presentación vendida
+                const productSummaryMap = new Map<string, ProductSalesSummary>()
+                for (const sale of scopedSales) {
+                  for (const item of sale.sale_items) {
+                    const key = `${item.product_id}-${item.unit_label}`
+                    const existing = productSummaryMap.get(key)
+                    if (existing) {
+                      existing.quantity += item.unit_quantity
+                      existing.total += item.line_total
+                    } else {
+                      productSummaryMap.set(key, {
+                        productName: item.products.name,
+                        unitLabel: item.unit_label,
+                        quantity: item.unit_quantity,
+                        total: item.line_total,
+                      })
+                    }
+                  }
+                }
+                const productSummary = Array.from(productSummaryMap.values()).sort(
+                  (a, b) => b.total - a.total,
+                )
+
+                return (
+                  <>
+                    <p className="mb-3 text-xs text-slate-400">
+                      {currentRegister
+                        ? `Ventas del turno actual, abierto desde las ${formatTime(currentRegister.openedAt)}`
+                        : lastClosedToday
+                          ? `Caja cerrada. Mostrando el último turno (${formatTime(lastClosedToday.openedAt)} – ${formatTime(lastClosedToday.closedAt!)})`
+                          : 'No hay ningún turno de caja registrado hoy'}
+                    </p>
+
+                    <div className="mb-4 grid grid-cols-3 gap-3">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Ventas</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">{scopedSales.length}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Unidades</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">{itemsToday}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">{money(totalToday)}</p>
+                      </div>
+                    </div>
+
+                    <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">
+                      Productos vendidos
+                    </h3>
+                    <div className="mb-4 max-h-[30vh] overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                      {productSummary.length === 0 ? (
+                        <div className="py-6 text-center text-sm text-slate-400">
+                          Aún no se ha vendido ningún producto.
+                        </div>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            <tr>
+                              <th className="px-3 py-2 text-left font-medium">Producto</th>
+                              <th className="px-3 py-2 text-center font-medium">Cant.</th>
+                              <th className="px-3 py-2 text-right font-medium">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {productSummary.map((item) => (
+                              <tr
+                                key={`${item.productName}-${item.unitLabel}`}
+                                className="border-b border-slate-100 last:border-0 dark:border-slate-800"
+                              >
+                                <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                                  {item.productName}
+                                  {item.unitLabel !== 'Unidad' && (
+                                    <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+                                      {item.unitLabel}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-center text-slate-500 dark:text-slate-400">
+                                  {item.quantity}
+                                </td>
+                                <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">
+                                  {money(item.total)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+
+                    <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">
+                      Tickets
+                    </h3>
+                    <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                      {scopedSales.length === 0 ? (
+                        <div className="py-10 text-center text-sm text-slate-400">
+                          Aún no hay ventas registradas.
+                        </div>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            <tr>
+                              <th className="px-3 py-2 text-left font-medium">Hora</th>
+                              <th className="px-3 py-2 text-left font-medium">Cliente</th>
+                              <th className="px-3 py-2 text-center font-medium">Ítems</th>
+                              <th className="px-3 py-2 text-right font-medium">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {scopedSales
+                              .slice()
+                              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                              .map((sale) => (
+                                <tr
+                                  key={sale.id}
+                                  className="border-b border-slate-100 last:border-0 dark:border-slate-800"
+                                >
+                                  <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
+                                    {formatTime(sale.created_at)}
+                                  </td>
+                                  <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                                    {sale.customers?.full_name || 'Venta de mostrador'}
+                                  </td>
+                                  <td className="px-3 py-2 text-center text-slate-500 dark:text-slate-400">
+                                    {sale.sale_items.reduce((sum, item) => sum + item.unit_quantity, 0)}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">
+                                    {money(sale.total)}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </>
+                )
+              })()
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ===== Modal de selección de presentación ===== */}
       {presentationPicker && (

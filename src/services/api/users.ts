@@ -37,6 +37,12 @@ export async function listUsers(): Promise<UserRecord[]> {
   return data.data;
 }
 
+/** Lista el personal (cajeros, etc.) de la propia droguería. Solo para Administrador de Drogueria. */
+export async function listStoreStaff(): Promise<UserRecord[]> {
+  const { data } = await apiClient.get<{ success: boolean; data: UserRecord[] }>('/users/store/staff');
+  return data.data;
+}
+
 export async function getRoles(): Promise<RoleRecord[]> {
   const { data } = await apiClient.get<{ success: boolean; data: RoleRecord[] }>('/users/roles');
   return data.data;

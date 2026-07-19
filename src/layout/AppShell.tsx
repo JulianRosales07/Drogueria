@@ -10,6 +10,7 @@ import {
   BoxIcon,
   BuildingIcon,
   CartIcon,
+  CashIcon,
   ChartIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -27,6 +28,7 @@ import {
 } from '../components/icons'
 
 const SUPER_ADMIN_ROLE = 'Super Administrador'
+const CASHIER_ROLE = 'Cajero'
 
 type NavItem = {
   label: string
@@ -59,6 +61,7 @@ const businessGroups: NavGroup[] = [
     title: 'Operación',
     items: [
       { label: 'Punto de venta', path: '/pos', icon: CartIcon },
+      { label: 'Caja', path: '/caja', icon: CashIcon },
       { label: 'Inventario', path: '/inventario', icon: BoxIcon, badgeKey: 'lowStock' },
       { label: 'Compras', path: '/compras', icon: BagIcon },
     ],
@@ -79,6 +82,21 @@ const businessGroups: NavGroup[] = [
   },
 ]
 
+// El Cajero solo debe ver Punto de venta, Caja y Reportes
+const cashierGroups: NavGroup[] = [
+  {
+    title: 'Operación',
+    items: [
+      { label: 'Punto de venta', path: '/pos', icon: CartIcon },
+      { label: 'Caja', path: '/caja', icon: CashIcon },
+    ],
+  },
+  {
+    title: 'Otros',
+    items: [{ label: 'Reportes', path: '/reportes', icon: ChartIcon }],
+  },
+]
+
 export function AppShell() {
   const location = useLocation()
   const [search, setSearch] = useState('')
@@ -94,12 +112,13 @@ export function AppShell() {
   const user = useUiStore((state) => state.user)
 
   const isSuperAdmin = user?.role === SUPER_ADMIN_ROLE
-  const groups = isSuperAdmin ? superAdminGroups : businessGroups
+  const isCashier = user?.role === CASHIER_ROLE
+  const groups = isSuperAdmin ? superAdminGroups : isCashier ? cashierGroups : businessGroups
 
   const { data: summary } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: getDashboardSummary,
-    enabled: !isSuperAdmin,
+    enabled: !isSuperAdmin && !isCashier,
   })
 
   const badgeValues: Partial<Record<NonNullable<NavItem['badgeKey']>, number>> = {
@@ -121,8 +140,8 @@ export function AppShell() {
   const activeLabel = useMemo(
     () =>
       allItems.find((item) => location.pathname.startsWith(item.path))?.label ??
-      (isSuperAdmin ? 'Droguerías' : 'Dashboard'),
-    [location.pathname, allItems, isSuperAdmin],
+      (isSuperAdmin ? 'Droguerías' : isCashier ? 'Punto de venta' : 'Dashboard'),
+    [location.pathname, allItems, isSuperAdmin, isCashier],
   )
 
   const handleLogout = () => {

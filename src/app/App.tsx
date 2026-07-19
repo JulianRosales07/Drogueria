@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AppShell } from '../layout/AppShell'
 import { LoginPage } from '../modules/auth/pages/LoginPage'
 import { DashboardPage } from '../modules/dashboard/pages/DashboardPage'
@@ -12,9 +12,14 @@ import { ReportsPage } from '../modules/reports/pages/ReportsPage'
 import { SettingsPage } from '../modules/settings/pages/SettingsPage'
 import { UsersPage } from '../modules/users/pages/UsersPage'
 import { StoresPage } from '../modules/stores/pages/StoresPage'
+import { CashRegisterPage } from '../modules/cash-register/pages/CashRegisterPage'
 import { useUiStore } from '../store/ui-store'
 
 const SUPER_ADMIN_ROLE = 'Super Administrador'
+const CASHIER_ROLE = 'Cajero'
+
+/** Rutas a las que el Cajero tiene acceso. Cualquier otra ruta de negocio lo redirige a /pos. */
+const CASHIER_ALLOWED_PATHS = ['/pos', '/reportes', '/caja']
 
 function ProtectedLayout() {
   const isAuthenticated = useUiStore((state) => state.isAuthenticated)
@@ -31,8 +36,7 @@ function PublicRoute() {
   const user = useUiStore((state) => state.user)
 
   if (isAuthenticated) {
-    const redirectTo = user?.role === SUPER_ADMIN_ROLE ? '/droguerias' : '/dashboard'
-    return <Navigate to={redirectTo} replace />
+    return <Navigate to={homeRouteFor(user?.role)} replace />
   }
 
   return <LoginPage />
@@ -58,6 +62,7 @@ function SuperAdminRoute({ children }: { children: ReactNode }) {
 function BusinessRoute({ children }: { children: ReactNode }) {
   const isAuthenticated = useUiStore((state) => state.isAuthenticated)
   const user = useUiStore((state) => state.user)
+  const location = useLocation()
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -67,12 +72,22 @@ function BusinessRoute({ children }: { children: ReactNode }) {
     return <Navigate to="/droguerias" replace />
   }
 
+  // El Cajero solo puede acceder a Punto de venta, Reportes y Caja
+  if (user?.role === CASHIER_ROLE && !CASHIER_ALLOWED_PATHS.includes(location.pathname)) {
+    return <Navigate to="/pos" replace />
+  }
+
   return children
+}
+
+function homeRouteFor(role: string | undefined) {
+  if (role === SUPER_ADMIN_ROLE) return '/droguerias'
+  if (role === CASHIER_ROLE) return '/pos'
+  return '/dashboard'
 }
 
 export function App() {
   const user = useUiStore((state) => state.user)
-  const isSuperAdmin = user?.role === SUPER_ADMIN_ROLE
 
   return (
     <Routes>
@@ -80,16 +95,21 @@ export function App() {
 
       <Route element={<ProtectedLayout />}>
         {/* Redirigir raíz según el rol */}
-        <Route
-          path="/"
-          element={<Navigate to={isSuperAdmin ? '/droguerias' : '/dashboard'} replace />}
-        />
+        <Route path="/" element={<Navigate to={homeRouteFor(user?.role)} replace />} />
 
         <Route
           path="/pos"
           element={
             <BusinessRoute>
               <PosPage />
+            </BusinessRoute>
+          }
+        />
+        <Route
+          path="/caja"
+          element={
+            <BusinessRoute>
+              <CashRegisterPage />
             </BusinessRoute>
           }
         />

@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx'
+import type { Product } from '../api/products'
 
 export const TEMPLATE_HEADERS = [
   'SKU',
@@ -239,4 +240,47 @@ export async function parseInventoryFile(file: File): Promise<ParseResult> {
   })
 
   return { rows, errors }
+}
+
+/**
+ * Exporta el inventario actual (productos + presentaciones) a un archivo Excel.
+ * A diferencia de la plantilla, este archivo refleja los datos reales del sistema.
+ */
+export function exportInventoryToExcel(products: Product[]) {
+  const rows = products.map((product) => ({
+    SKU: product.sku,
+    CodigoBarras: product.barcode ?? '',
+    Nombre: product.name,
+    Descripcion: product.description ?? '',
+    Categoria: product.categoryName ?? '',
+    Costo: product.cost,
+    PrecioVenta: product.price,
+    Stock: product.stock,
+    StockMinimo: product.minStock,
+    Activo: product.isActive ? 'Si' : 'No',
+    Presentaciones: product.units.length
+      ? product.units.map((u) => `${u.name} (x${u.factor}) $${u.price}`).join(' | ')
+      : '',
+  }))
+
+  const worksheet = XLSX.utils.json_to_sheet(rows)
+  worksheet['!cols'] = [
+    { wch: 14 }, // SKU
+    { wch: 16 }, // CodigoBarras
+    { wch: 30 }, // Nombre
+    { wch: 28 }, // Descripcion
+    { wch: 18 }, // Categoria
+    { wch: 12 }, // Costo
+    { wch: 12 }, // PrecioVenta
+    { wch: 10 }, // Stock
+    { wch: 12 }, // StockMinimo
+    { wch: 8 },  // Activo
+    { wch: 40 }, // Presentaciones
+  ]
+
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventario')
+
+  const today = new Date().toISOString().slice(0, 10)
+  XLSX.writeFile(workbook, `inventario_${today}.xlsx`)
 }

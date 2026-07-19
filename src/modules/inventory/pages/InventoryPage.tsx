@@ -7,8 +7,8 @@ import { SectionCard } from '../../../components/ui/SectionCard'
 import { ProductFormModal } from '../components/ProductFormModal'
 import { ProductDetailModal } from '../components/ProductDetailModal'
 import { ImportInventoryModal } from '../components/ImportInventoryModal'
-import { downloadInventoryTemplate } from '../../../services/excel/inventoryTemplate'
-import { listProducts, deleteProduct, type Product } from '../../../services/api/products'
+import { downloadInventoryTemplate, exportInventoryToExcel } from '../../../services/excel/inventoryTemplate'
+import { listProducts, deleteProduct, wipeAllInventory, type Product } from '../../../services/api/products'
 
 function money(value: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -22,12 +22,16 @@ function getStatus(product: Product): 'Disponible' | 'Crítico' {
   return product.stock <= product.minStock ? 'Crítico' : 'Disponible'
 }
 
+type SortOrder = 'newest' | 'oldest'
+
 export function InventoryPage() {
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest')
 
   const productsQuery = useQuery({
     queryKey: ['products'],
@@ -51,7 +55,55 @@ export function InventoryPage() {
     }
   }
 
+  const wipeMutation = useMutation({
+    mutationFn: wipeAllInventory,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      toast.success(
+        `Inventario eliminado: ${result.deletedProducts} productos, ${result.deletedSales} ventas, ${result.deletedPurchases} compras.`,
+      )
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al borrar el inventario')
+    },
+  })
+
+  const handleWipeAll = () => {
+    if (
+      !confirm(
+        'Estás a punto de borrar TODO el inventario: productos, presentaciones, ventas y compras. Esta acción es IRREVERSIBLE. ¿Deseas continuar?',
+      )
+    ) {
+      return
+    }
+    const confirmation = window.prompt('Escribe BORRAR (en mayúsculas) para confirmar esta acción irreversible:')
+    if (confirmation === null) return
+    if (confirmation !== 'BORRAR') {
+      toast.error('Confirmación incorrecta. No se realizó ningún cambio.')
+      return
+    }
+    wipeMutation.mutate(confirmation)
+  }
+
   const products = productsQuery.data ?? []
+
+  const visibleProducts = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    const filtered = term
+      ? products.filter(
+          (p) =>
+            p.name.toLowerCase().includes(term) ||
+            p.sku.toLowerCase().includes(term) ||
+            p.barcode?.toLowerCase().includes(term) ||
+            p.categoryName?.toLowerCase().includes(term),
+        )
+      : products
+
+    return filtered.slice().sort((a, b) => {
+      const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      return sortOrder === 'newest' ? -diff : diff
+    })
+  }, [products, searchTerm, sortOrder])
 
   const stats = useMemo(() => {
     const active = products.filter((p) => p.isActive).length
@@ -173,10 +225,26 @@ export function InventoryPage() {
             </button>
             <button
               type="button"
+              onClick={() => exportInventoryToExcel(visibleProducts)}
+              disabled={visibleProducts.length === 0}
+              className="rounded-md border border-emerald-300 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+            >
+              📤 Exportar inventario
+            </button>
+            <button
+              type="button"
               onClick={handleOpenCreate}
               className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
             >
               + Nuevo producto
+            </button>
+            <button
+              type="button"
+              onClick={handleWipeAll}
+              disabled={wipeMutation.isPending}
+              className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-500/10"
+            >
+              {wipeMutation.isPending ? 'Borrando...' : '🗑️ Borrar todo el inventario'}
             </button>
           </div>
         }
@@ -198,6 +266,26 @@ export function InventoryPage() {
           </div>
         </div>
 
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por nombre, SKU, código de barras o categoría…"
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+          </div>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+            className="rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          >
+            <option value="newest">Más recientes primero</option>
+            <option value="oldest">Más antiguos primero</option>
+          </select>
+        </div>
+
         {productsQuery.isLoading ? (
           <div className="py-10 text-center text-sm text-slate-400">Cargando productos…</div>
         ) : productsQuery.isError ? (
@@ -214,12 +302,16 @@ export function InventoryPage() {
           </div>
         ) : (
           <>
-            <DataTable data={products} columns={columns} />
-            {products.length === 0 && (
+            <DataTable data={visibleProducts} columns={columns} />
+            {products.length === 0 ? (
               <div className="mt-3 rounded-lg border border-dashed border-slate-300 py-6 text-center text-sm text-slate-400 dark:border-slate-700">
                 No hay productos registrados. Crea el primero con el botón "Nuevo producto" o impórtalos desde Excel.
               </div>
-            )}
+            ) : visibleProducts.length === 0 ? (
+              <div className="mt-3 rounded-lg border border-dashed border-slate-300 py-6 text-center text-sm text-slate-400 dark:border-slate-700">
+                Sin resultados para "{searchTerm}".
+              </div>
+            ) : null}
           </>
         )}
       </SectionCard>

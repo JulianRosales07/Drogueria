@@ -91,6 +91,20 @@ export async function deleteProduct(id: string): Promise<void> {
   await apiClient.delete(`/products/${id}`);
 }
 
+export type WipeInventoryResult = {
+  deletedProducts: number;
+  deletedSales: number;
+  deletedPurchases: number;
+};
+
+export async function wipeAllInventory(confirmation: string): Promise<WipeInventoryResult> {
+  const { data } = await apiClient.delete<{ success: boolean; data: WipeInventoryResult }>(
+    '/products/wipe-all',
+    { data: { confirmation } },
+  );
+  return data.data;
+}
+
 export async function listProductUnits(productId: string): Promise<ProductUnit[]> {
   const { data } = await apiClient.get<{ success: boolean; data: ProductUnit[] }>(
     `/products/${productId}/units`,

@@ -9,6 +9,10 @@ import { DataTable } from '../../../components/ui/DataTable'
 import { listSales, type Sale } from '../../../services/api/sales'
 import { listPurchases } from '../../../services/api/purchases'
 import { listProducts } from '../../../services/api/products'
+import { listStoreStaff } from '../../../services/api/users'
+import { useUiStore } from '../../../store/ui-store'
+
+const STORE_ADMIN_ROLE = 'Administrador de Drogueria'
 
 function money(value: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -42,10 +46,21 @@ export function ReportsPage() {
 
   const [dateFrom, setDateFrom] = useState(toDateInputValue(monthAgo))
   const [dateTo, setDateTo] = useState(toDateInputValue(today))
+  const [cashierId, setCashierId] = useState<string>('')
+
+  const user = useUiStore((state) => state.user)
+  const isStoreAdmin = user?.role === STORE_ADMIN_ROLE
+
+  const staffQuery = useQuery({
+    queryKey: ['store-staff'],
+    queryFn: listStoreStaff,
+    enabled: isStoreAdmin,
+  })
+  const cashiers = (staffQuery.data ?? []).filter((u) => u.roleName === 'Cajero')
 
   const salesQuery = useQuery({
-    queryKey: ['sales'],
-    queryFn: listSales,
+    queryKey: ['sales', cashierId || 'all'],
+    queryFn: () => listSales(cashierId || undefined),
   })
 
   const purchasesQuery = useQuery({
@@ -168,6 +183,11 @@ export function ReportsPage() {
         cell: ({ row }) => row.original.customers?.full_name || 'Venta de mostrador',
       },
       {
+        header: 'Cajero',
+        id: 'cashier',
+        cell: ({ row }) => row.original.users?.full_name || '—',
+      },
+      {
         header: 'Ítems',
         id: 'items',
         cell: ({ row }) => row.original.sale_items.reduce((sum, item) => sum + item.unit_quantity, 0),
@@ -189,6 +209,7 @@ export function ReportsPage() {
         Fecha: formatDateTime(sale.created_at),
         Folio: sale.id,
         Cliente: sale.customers?.full_name || 'Venta de mostrador',
+        Cajero: sale.users?.full_name || '—',
         Producto: item.products.name,
         Presentación: item.unit_label,
         Cantidad: item.unit_quantity,
@@ -200,7 +221,7 @@ export function ReportsPage() {
 
     const worksheet = XLSX.utils.json_to_sheet(rows)
     worksheet['!cols'] = [
-      { wch: 18 }, { wch: 12 }, { wch: 22 }, { wch: 28 },
+      { wch: 18 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 28 },
       { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
     ]
     const workbook = XLSX.utils.book_new()
@@ -265,6 +286,23 @@ export function ReportsPage() {
           description="Detalle de tickets registrados en el punto de venta, filtrable por fecha."
           action={
             <div className="flex flex-wrap items-end gap-2">
+              {isStoreAdmin && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Cajero</label>
+                  <select
+                    value={cashierId}
+                    onChange={(e) => setCashierId(e.target.value)}
+                    className="mt-1 rounded-md border border-slate-200 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">Todos</option>
+                    {cashiers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Desde</label>
                 <input
