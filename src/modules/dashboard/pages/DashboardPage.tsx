@@ -31,7 +31,7 @@ export function DashboardPage() {
 
   const salesQuery = useQuery({
     queryKey: ['sales'],
-    queryFn: listSales,
+    queryFn: () => listSales(),
   })
 
   const summary = summaryQuery.data

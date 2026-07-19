@@ -104,7 +104,7 @@ export function PosPage() {
   const [showDailySales, setShowDailySales] = useState(false)
   const dailySalesQuery = useQuery({
     queryKey: ['sales'],
-    queryFn: listSales,
+    queryFn: () => listSales(),
     enabled: showDailySales,
   })
   const registerHistoryQuery = useQuery({
