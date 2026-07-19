@@ -19,7 +19,7 @@ const SUPER_ADMIN_ROLE = 'Super Administrador'
 const CASHIER_ROLE = 'Cajero'
 
 /** Rutas a las que el Cajero tiene acceso. Cualquier otra ruta de negocio lo redirige a /pos. */
-const CASHIER_ALLOWED_PATHS = ['/pos', '/reportes', '/caja']
+const CASHIER_ALLOWED_PATHS = ['/pos', '/reportes', '/caja', '/configuracion']
 
 function ProtectedLayout() {
   const isAuthenticated = useUiStore((state) => state.isAuthenticated)

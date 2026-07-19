@@ -82,7 +82,7 @@ const businessGroups: NavGroup[] = [
   },
 ]
 
-// El Cajero solo debe ver Punto de venta, Caja y Reportes
+// El Cajero solo debe ver Punto de venta, Caja, Reportes y Configuración
 const cashierGroups: NavGroup[] = [
   {
     title: 'Operación',
@@ -93,7 +93,10 @@ const cashierGroups: NavGroup[] = [
   },
   {
     title: 'Otros',
-    items: [{ label: 'Reportes', path: '/reportes', icon: ChartIcon }],
+    items: [
+      { label: 'Reportes', path: '/reportes', icon: ChartIcon },
+      { label: 'Configuración', path: '/configuracion', icon: GearIcon },
+    ],
   },
 ]
 
