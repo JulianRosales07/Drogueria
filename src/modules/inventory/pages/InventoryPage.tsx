@@ -32,6 +32,7 @@ export function InventoryPage() {
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest')
+  const [lowStockOnly, setLowStockOnly] = useState(false)
 
   const productsQuery = useQuery({
     queryKey: ['products'],
@@ -89,7 +90,7 @@ export function InventoryPage() {
 
   const visibleProducts = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
-    const filtered = term
+    let filtered = term
       ? products.filter(
           (p) =>
             p.name.toLowerCase().includes(term) ||
@@ -99,11 +100,15 @@ export function InventoryPage() {
         )
       : products
 
+    if (lowStockOnly) {
+      filtered = filtered.filter((p) => p.stock <= p.minStock)
+    }
+
     return filtered.slice().sort((a, b) => {
       const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       return sortOrder === 'newest' ? -diff : diff
     })
-  }, [products, searchTerm, sortOrder])
+  }, [products, searchTerm, sortOrder, lowStockOnly])
 
   const stats = useMemo(() => {
     const active = products.filter((p) => p.isActive).length
@@ -254,10 +259,21 @@ export function InventoryPage() {
             <p className="text-sm text-slate-500 dark:text-slate-400">Productos activos</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{stats.active}</p>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+          <button
+            type="button"
+            onClick={() => setLowStockOnly((v) => !v)}
+            className={`rounded-lg border p-4 text-left transition ${
+              lowStockOnly
+                ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-500/10'
+                : 'border-slate-200 bg-slate-50 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-800/60'
+            }`}
+          >
             <p className="text-sm text-slate-500 dark:text-slate-400">Stock crítico</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{stats.critical}</p>
-          </div>
+            <p className="mt-1 text-xs text-slate-400">
+              {lowStockOnly ? 'Filtro activo · clic para quitar' : 'Clic para filtrar'}
+            </p>
+          </button>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
             <p className="text-sm text-slate-500 dark:text-slate-400">Valor de inventario</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
@@ -284,6 +300,15 @@ export function InventoryPage() {
             <option value="newest">Más recientes primero</option>
             <option value="oldest">Más antiguos primero</option>
           </select>
+          <label className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200">
+            <input
+              type="checkbox"
+              checked={lowStockOnly}
+              onChange={(e) => setLowStockOnly(e.target.checked)}
+              className="size-4 accent-red-600"
+            />
+            Solo stock bajo
+          </label>
         </div>
 
         {productsQuery.isLoading ? (
@@ -309,7 +334,9 @@ export function InventoryPage() {
               </div>
             ) : visibleProducts.length === 0 ? (
               <div className="mt-3 rounded-lg border border-dashed border-slate-300 py-6 text-center text-sm text-slate-400 dark:border-slate-700">
-                Sin resultados para "{searchTerm}".
+                {searchTerm
+                  ? `Sin resultados para "${searchTerm}".`
+                  : 'No hay productos con stock bajo en este momento.'}
               </div>
             ) : null}
           </>
