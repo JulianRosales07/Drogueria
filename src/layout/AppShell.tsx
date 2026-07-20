@@ -175,8 +175,8 @@ export function AppShell() {
             <div className="mb-3 flex h-9 w-9 items-center justify-center">
               <CapsulaLogo className="h-7 w-7" />
             </div>
-            <div className="flex flex-1 flex-col items-center gap-1">
-              {allItems.slice(0, 8).map((item) => {
+            <div className="flex flex-1 flex-col items-center gap-1 overflow-x-hidden overflow-y-auto">
+              {allItems.map((item) => {
                 const isActive = location.pathname.startsWith(item.path)
                 const Icon = item.icon
                 const badge = item.badgeKey ? badgeValues[item.badgeKey] : undefined

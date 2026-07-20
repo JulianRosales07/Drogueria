@@ -5,6 +5,7 @@ import { StatCard } from '../../../components/ui/StatCard'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { getDashboardSummary } from '../../../services/api/dashboard'
 import { listSales } from '../../../services/api/sales'
+import { useUiStore } from '../../../store/ui-store'
 
 function money(value: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -24,6 +25,8 @@ function formatDate(dateStr: string) {
 }
 
 export function DashboardPage() {
+  const storeName = useUiStore((state) => state.user?.storeName)
+
   const summaryQuery = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: getDashboardSummary,
@@ -89,7 +92,7 @@ export function DashboardPage() {
               Resumen Operativo
             </p>
             <h1 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
-              Panel de Control de Droguería
+              Panel de Control de {storeName || 'la Droguería'}
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
               Monitoreo del inventario crítico, volumen de ventas diarias y gestión integral del negocio.

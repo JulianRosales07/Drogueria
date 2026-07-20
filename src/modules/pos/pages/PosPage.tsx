@@ -193,12 +193,25 @@ export function PosPage() {
   }, [customers, customerName])
 
   const playBeep = () => {
+    // Se usa Web Audio API (oscilador) en vez de <audio>/new Audio(...) a propósito:
+    // un elemento HTMLMediaElement registra una "sesión de medios" en el navegador,
+    // lo que hace que Chrome/Edge muestre el popup de "Controles multimedia globales"
+    // (◄ ❙❙ ►) flotando sobre la ventana mientras esa sesión siga activa, incluso al
+    // navegar a otras páginas de la SPA. Un oscilador no crea esa sesión.
     try {
-      const audio = new Audio(
-        'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE',
-      )
-      audio.volume = 0.2
-      audio.play().catch(() => {})
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = new AudioCtx()
+      const oscillator = ctx.createOscillator()
+      const gain = ctx.createGain()
+      oscillator.type = 'sine'
+      oscillator.frequency.value = 880
+      gain.gain.value = 0.05
+      oscillator.connect(gain)
+      gain.connect(ctx.destination)
+      oscillator.start()
+      oscillator.stop(ctx.currentTime + 0.08)
+      oscillator.onended = () => ctx.close()
     } catch {
       // ignore
     }
