@@ -20,6 +20,7 @@ import {
   LogOutIcon,
   MenuIcon,
   MoonIcon,
+  ReceiptIcon,
   SearchIcon,
   SunIcon,
   TruckIcon,
@@ -64,6 +65,7 @@ const businessGroups: NavGroup[] = [
     title: 'Operación',
     items: [
       { label: 'Punto de venta', path: '/pos', icon: CartIcon },
+      { label: 'Facturas', path: '/facturas', icon: ReceiptIcon },
       { label: 'Caja', path: '/caja', icon: CashIcon },
       { label: 'Inventario', path: '/inventario', icon: BoxIcon, badgeKey: 'lowStock' },
       { label: 'Compras', path: '/compras', icon: BagIcon },
@@ -91,6 +93,7 @@ const cashierGroups: NavGroup[] = [
     title: 'Operación',
     items: [
       { label: 'Punto de venta', path: '/pos', icon: CartIcon },
+      { label: 'Facturas', path: '/facturas', icon: ReceiptIcon },
       { label: 'Caja', path: '/caja', icon: CashIcon },
     ],
   },

@@ -152,3 +152,10 @@ export const XIcon = createIcon(
     <path d="M18 6 6 18" />
   </>,
 )
+
+export const ReceiptIcon = createIcon(
+  <>
+    <path d="M6 2h12a1 1 0 0 1 1 1v18l-2.5-1.5L14 21l-2.5-1.5L9 21l-2.5-1.5L4 21V3a1 1 0 0 1 1-1Z" />
+    <path d="M8 8h8M8 12h8M8 16h5" />
+  </>,
+)

@@ -5,6 +5,7 @@ import { LoginPage } from '../modules/auth/pages/LoginPage'
 import { DashboardPage } from '../modules/dashboard/pages/DashboardPage'
 import { InventoryPage } from '../modules/inventory/pages/InventoryPage'
 import { PosPage } from '../modules/pos/pages/PosPage'
+import { InvoicesPage } from '../modules/invoices/pages/InvoicesPage'
 import { CustomersPage } from '../modules/customers/pages/CustomersPage'
 import { SuppliersPage } from '../modules/suppliers/pages/SuppliersPage'
 import { PurchasesPage } from '../modules/purchases/pages/PurchasesPage'
@@ -23,7 +24,7 @@ const SELLER_ROLE = 'Vendedor'
 const OPERATOR_ROLES = [CASHIER_ROLE, SELLER_ROLE]
 
 /** Rutas a las que los roles de caja/venta tienen acceso. Cualquier otra ruta de negocio los redirige a /pos. */
-const OPERATOR_ALLOWED_PATHS = ['/pos', '/reportes', '/caja', '/configuracion']
+const OPERATOR_ALLOWED_PATHS = ['/pos', '/facturas', '/reportes', '/caja', '/configuracion']
 
 function ProtectedLayout() {
   const isAuthenticated = useUiStore((state) => state.isAuthenticated)
@@ -114,6 +115,14 @@ export function App() {
           element={
             <BusinessRoute>
               <CashRegisterPage />
+            </BusinessRoute>
+          }
+        />
+        <Route
+          path="/facturas"
+          element={
+            <BusinessRoute>
+              <InvoicesPage />
             </BusinessRoute>
           }
         />

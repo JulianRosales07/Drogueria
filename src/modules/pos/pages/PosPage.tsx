@@ -125,6 +125,7 @@ export function PosPage() {
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(true)
   const [ticketNumber, setTicketNumber] = useState(1)
   const [presentationPicker, setPresentationPicker] = useState<Product | null>(null)
+  const [viewingSale, setViewingSale] = useState<Sale | null>(null)
 
   const createSaleMutation = useMutation({
     mutationFn: createSale,
@@ -739,7 +740,7 @@ export function PosPage() {
       {/* ===== Modal de ventas del día ===== */}
       {showDailySales && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+          <div className="flex h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Ventas del día</h2>
               <button
@@ -751,7 +752,7 @@ export function PosPage() {
             </div>
 
             {dailySalesQuery.isLoading || registerHistoryQuery.isLoading ? (
-              <div className="py-10 text-center text-sm text-slate-400">Cargando ventas…</div>
+              <div className="flex-1 py-10 text-center text-sm text-slate-400">Cargando ventas…</div>
             ) : (
               (() => {
                 const currentRegister = cashRegisterQuery.data
@@ -806,7 +807,7 @@ export function PosPage() {
                 )
 
                 return (
-                  <>
+                  <div className="flex min-h-0 flex-1 flex-col">
                     <p className="mb-3 text-xs text-slate-400">
                       {currentRegister
                         ? `Ventas del turno actual, abierto desde las ${formatTime(currentRegister.openedAt)}`
@@ -833,7 +834,7 @@ export function PosPage() {
                     <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">
                       Productos vendidos
                     </h3>
-                    <div className="mb-4 max-h-[30vh] overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div className="mb-4 max-h-40 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
                       {productSummary.length === 0 ? (
                         <div className="py-6 text-center text-sm text-slate-400">
                           Aún no se ha vendido ningún producto.
@@ -877,7 +878,7 @@ export function PosPage() {
                     <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">
                       Tickets
                     </h3>
-                    <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
                       {scopedSales.length === 0 ? (
                         <div className="py-10 text-center text-sm text-slate-400">
                           Aún no hay ventas registradas.
@@ -886,10 +887,12 @@ export function PosPage() {
                         <table className="w-full text-sm">
                           <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                             <tr>
+                              <th className="px-3 py-2 text-left font-medium">Factura</th>
                               <th className="px-3 py-2 text-left font-medium">Hora</th>
                               <th className="px-3 py-2 text-left font-medium">Cliente</th>
                               <th className="px-3 py-2 text-center font-medium">Ítems</th>
                               <th className="px-3 py-2 text-right font-medium">Total</th>
+                              <th className="px-3 py-2 text-center font-medium" />
                             </tr>
                           </thead>
                           <tbody>
@@ -901,6 +904,9 @@ export function PosPage() {
                                   key={sale.id}
                                   className="border-b border-slate-100 last:border-0 dark:border-slate-800"
                                 >
+                                  <td className="px-3 py-2 font-mono text-xs text-slate-500 dark:text-slate-400">
+                                    #{sale.id.substring(0, 8).toUpperCase()}
+                                  </td>
                                   <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
                                     {formatTime(sale.created_at)}
                                   </td>
@@ -913,16 +919,111 @@ export function PosPage() {
                                   <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">
                                     {money(sale.total)}
                                   </td>
+                                  <td className="px-3 py-2 text-center">
+                                    <button
+                                      onClick={() => setViewingSale(sale)}
+                                      className="rounded-md px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10"
+                                    >
+                                      Ver
+                                    </button>
+                                  </td>
                                 </tr>
                               ))}
                           </tbody>
                         </table>
                       )}
                     </div>
-                  </>
+                  </div>
                 )
               })()
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ===== Modal de detalle de una venta (factura + productos vendidos) ===== */}
+      {viewingSale && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+            <div className="mb-1 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Factura #{viewingSale.id.substring(0, 8).toUpperCase()}
+              </h2>
+              <button
+                onClick={() => setViewingSale(null)}
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mb-4 text-xs text-slate-400">
+              {new Date(viewingSale.created_at).toLocaleString('es-CO', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })}
+              {' · '}
+              {viewingSale.customers?.full_name || 'Venta de mostrador'}
+            </p>
+
+            <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Producto</th>
+                    <th className="px-3 py-2 text-center font-medium">Cant.</th>
+                    <th className="px-3 py-2 text-right font-medium">Precio</th>
+                    <th className="px-3 py-2 text-right font-medium">Importe</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewingSale.sale_items.map((item) => (
+                    <tr key={item.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+                      <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                        {item.products.name}
+                        {item.unit_label !== 'Unidad' && (
+                          <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+                            {item.unit_label}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-center text-slate-500 dark:text-slate-400">
+                        {item.unit_quantity}
+                      </td>
+                      <td className="px-3 py-2 text-right text-slate-500 dark:text-slate-400">
+                        {money(item.unit_price)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">
+                        {money(item.line_total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4 space-y-1 border-t border-slate-200 pt-3 text-sm dark:border-slate-800">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                <span>Subtotal</span>
+                <span>{money(viewingSale.subtotal)}</span>
+              </div>
+              {viewingSale.discount > 0 && (
+                <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                  <span>Descuento</span>
+                  <span>-{money(viewingSale.discount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-base font-semibold text-slate-900 dark:text-white">
+                <span>Total</span>
+                <span>{money(viewingSale.total)}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setViewingSale(null)}
+              className="mt-4 w-full rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       )}
