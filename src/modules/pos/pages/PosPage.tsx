@@ -5,7 +5,13 @@ import toast from 'react-hot-toast'
 import { useReactToPrint } from 'react-to-print'
 import { Receipt } from '../../../components/Receipt'
 import { listProducts, type Product } from '../../../services/api/products'
-import { createSale, listSales, type Sale } from '../../../services/api/sales'
+import {
+  createSale,
+  listSales,
+  type Sale,
+  type PaymentMethod,
+  PAYMENT_METHOD_LABELS,
+} from '../../../services/api/sales'
 import { listCustomers } from '../../../services/api/customers'
 import { getCurrentCashRegister, listCashRegisterHistory } from '../../../services/api/cash-registers'
 import { useReceiptConfig } from '../../../hooks/useReceiptConfig'
@@ -116,6 +122,7 @@ export function PosPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
   const [customerName, setCustomerName] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false)
@@ -137,6 +144,7 @@ export function PosPage() {
       setCart([])
       setSearchQuery('')
       setPaymentAmount('')
+      setPaymentMethod('CASH')
       setCustomerName('')
       setSelectedCustomerId(null)
       setTicketNumber((n) => n + 1)
@@ -354,6 +362,7 @@ export function PosPage() {
       setCart([])
       setSearchQuery('')
       setPaymentAmount('')
+      setPaymentMethod('CASH')
       setCustomerName('')
       setSelectedCustomerId(null)
       searchInputRef.current?.focus()
@@ -398,6 +407,7 @@ export function PosPage() {
     createSaleMutation.mutate({
       customerId: selectedCustomerId ?? undefined,
       customerName: !selectedCustomerId ? customerName.trim() || undefined : undefined,
+      paymentMethod,
       items: cart.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -689,6 +699,26 @@ export function PosPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="mb-3 flex items-center gap-2">
+            <span className="shrink-0 text-xs font-medium text-slate-400">Método de pago</span>
+            <div className="flex gap-1.5">
+              {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((method) => (
+                <button
+                  key={method}
+                  type="button"
+                  onClick={() => setPaymentMethod(method)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                    paymentMethod === method
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {PAYMENT_METHOD_LABELS[method]}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

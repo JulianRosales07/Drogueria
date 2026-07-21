@@ -3,7 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { listSuppliers } from '../../../services/api/suppliers'
 import { listProducts, type Product } from '../../../services/api/products'
-import { createPurchase, type PurchaseItemInput } from '../../../services/api/purchases'
+import {
+  createPurchase,
+  type PurchaseItemInput,
+  type PurchasePaymentStatus,
+  PURCHASE_PAYMENT_STATUS_LABELS,
+} from '../../../services/api/purchases'
 
 type PurchaseFormModalProps = {
   open: boolean
@@ -38,6 +43,8 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [notes, setNotes] = useState('')
   const [tax, setTax] = useState(0)
+  const [paymentStatus, setPaymentStatus] = useState<PurchasePaymentStatus>('PAID')
+  const [amountPaid, setAmountPaid] = useState(0)
 
   // Items state
   const [items, setItems] = useState<SelectedItem[]>([])
@@ -72,6 +79,8 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
     setInvoiceNumber('')
     setNotes('')
     setTax(0)
+    setPaymentStatus('PAID')
+    setAmountPaid(0)
     setItems([])
     setSearchQuery('')
     setSelectedProduct(null)
@@ -197,6 +206,9 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
       if (items.length === 0) {
         throw new Error('La lista de compra está vacía')
       }
+      if (paymentStatus === 'PARTIAL' && (amountPaid <= 0 || amountPaid >= total)) {
+        throw new Error('El monto abonado debe ser mayor a 0 y menor al total para un pago parcial')
+      }
 
       const purchaseItems: PurchaseItemInput[] = items.map((it) => ({
         productId: it.product.id,
@@ -213,6 +225,8 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
         notes: notes.trim() || undefined,
         tax: Number(tax) || 0,
         items: purchaseItems,
+        paymentStatus,
+        amountPaid: paymentStatus === 'PARTIAL' ? Number(amountPaid) : undefined,
       })
     },
     onSuccess: () => {
@@ -290,6 +304,42 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
                 onChange={(e) => setTax(Number(e.target.value))}
               />
             </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Estado de pago al proveedor
+              </span>
+              <select
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={paymentStatus}
+                onChange={(e) => setPaymentStatus(e.target.value as PurchasePaymentStatus)}
+              >
+                {(Object.keys(PURCHASE_PAYMENT_STATUS_LABELS) as PurchasePaymentStatus[]).map((status) => (
+                  <option key={status} value={status}>
+                    {PURCHASE_PAYMENT_STATUS_LABELS[status]}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {paymentStatus === 'PARTIAL' && (
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Monto abonado ahora
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  max={total}
+                  className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  value={amountPaid || ''}
+                  onChange={(e) => setAmountPaid(Number(e.target.value))}
+                />
+                <span className="mt-1 block text-xs text-slate-400">
+                  Saldo pendiente: {money(Math.max(total - amountPaid, 0))}
+                </span>
+              </label>
+            )}
 
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">

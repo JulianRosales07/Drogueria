@@ -12,6 +12,7 @@ export type CashRegister = {
   expectedAmount: number | null;
   difference: number | null;
   salesTotal: number | null;
+  cashSalesTotal: number | null;
   salesCount: number | null;
   openingNote: string | null;
   closingNote: string | null;
@@ -22,6 +23,7 @@ export type CashRegister = {
 
 export type CurrentCashRegister = CashRegister & {
   salesTotalSoFar: number;
+  cashSalesTotalSoFar: number;
   salesCountSoFar: number;
 };
 

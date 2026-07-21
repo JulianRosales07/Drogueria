@@ -231,54 +231,7 @@ export function ReportsPage() {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <SectionCard title="Reporte Comercial (Miles COP)" description="Evolución y comparativa mensual de Ventas vs Compras.">
-        {loading ? (
-          <div className="py-20 text-center text-sm text-slate-400">Cargando gráficos...</div>
-        ) : (
-          <Bar
-            data={{
-              labels: chartData.labels,
-              datasets: [
-                {
-                  label: 'Ventas',
-                  data: chartData.sales,
-                  backgroundColor: '#2563eb',
-                  borderRadius: 6,
-                },
-                {
-                  label: 'Compras',
-                  data: chartData.purchases,
-                  backgroundColor: '#94a3b8',
-                  borderRadius: 6,
-                },
-              ],
-            }}
-            options={{
-              responsive: true,
-              plugins: {
-                legend: { position: 'bottom' },
-              },
-            }}
-          />
-        )}
-      </SectionCard>
 
-      <SectionCard title="Hallazgos del Negocio" description="Resumen analítico computado a partir de datos reales.">
-        {loading ? (
-          <div className="py-10 text-center text-sm text-slate-400">Calculando hallazgos...</div>
-        ) : (
-          <div className="space-y-4">
-            {highlights.map((highlight, index) => (
-              <article
-                key={index}
-                className="rounded-lg border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/60"
-              >
-                <p className="text-sm leading-6 text-slate-700 dark:text-slate-300 font-medium">{highlight}</p>
-              </article>
-            ))}
-          </div>
-        )}
-      </SectionCard>
 
       <div className="xl:col-span-2">
         <SectionCard
@@ -366,6 +319,54 @@ export function ReportsPage() {
           )}
         </SectionCard>
       </div>
+            <SectionCard title="Reporte Comercial (Miles COP)" description="Evolución y comparativa mensual de Ventas vs Compras.">
+        {loading ? (
+          <div className="py-20 text-center text-sm text-slate-400">Cargando gráficos...</div>
+        ) : (
+          <Bar
+            data={{
+              labels: chartData.labels,
+              datasets: [
+                {
+                  label: 'Ventas',
+                  data: chartData.sales,
+                  backgroundColor: '#2563eb',
+                  borderRadius: 6,
+                },
+                {
+                  label: 'Compras',
+                  data: chartData.purchases,
+                  backgroundColor: '#94a3b8',
+                  borderRadius: 6,
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              plugins: {
+                legend: { position: 'bottom' },
+              },
+            }}
+          />
+        )}
+      </SectionCard>
+
+      <SectionCard title="Hallazgos del Negocio" description="Resumen analítico computado a partir de datos reales.">
+        {loading ? (
+          <div className="py-10 text-center text-sm text-slate-400">Calculando hallazgos...</div>
+        ) : (
+          <div className="space-y-4">
+            {highlights.map((highlight, index) => (
+              <article
+                key={index}
+                className="rounded-lg border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/60"
+              >
+                <p className="text-sm leading-6 text-slate-700 dark:text-slate-300 font-medium">{highlight}</p>
+              </article>
+            ))}
+          </div>
+        )}
+      </SectionCard>
     </div>
   )
 }

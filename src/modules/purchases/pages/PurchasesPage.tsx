@@ -1,8 +1,13 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { SectionCard } from '../../../components/ui/SectionCard'
-import { listPurchases } from '../../../services/api/purchases'
+import {
+  listPurchases,
+  PURCHASE_PAYMENT_STATUS_LABELS,
+  type Purchase,
+} from '../../../services/api/purchases'
 import { PurchaseFormModal } from '../components/PurchaseFormModal'
+import { RegisterPaymentModal } from '../components/RegisterPaymentModal'
 
 function money(value: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -22,8 +27,15 @@ function formatDate(dateStr: string) {
   })
 }
 
+const PAYMENT_STATUS_STYLE: Record<Purchase['payment_status'], string> = {
+  PAID: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400',
+  PARTIAL: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',
+  PENDING: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400',
+}
+
 export function PurchasesPage() {
   const [modalOpen, setModalOpen] = useState(false)
+  const [payingPurchase, setPayingPurchase] = useState<Purchase | null>(null)
 
   const purchasesQuery = useQuery({
     queryKey: ['purchases'],
@@ -80,13 +92,32 @@ export function PurchasesPage() {
                       {formatDate(purchase.created_at)}
                     </p>
                   </div>
-                  <div className="flex flex-col items-start md:items-end justify-between">
-                    <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 uppercase">
-                      {purchase.status}
-                    </span>
-                    <p className="mt-2 text-lg font-bold text-slate-900 dark:text-white">
+                  <div className="flex flex-col items-start md:items-end justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 md:justify-end">
+                      <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 uppercase">
+                        {purchase.status}
+                      </span>
+                      <span className={`rounded px-2 py-0.5 text-[10px] font-medium uppercase ${PAYMENT_STATUS_STYLE[purchase.payment_status]}`}>
+                        {PURCHASE_PAYMENT_STATUS_LABELS[purchase.payment_status]}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
                       {money(purchase.total)}
                     </p>
+                    {purchase.payment_status !== 'PAID' && (
+                      <>
+                        <p className="text-xs text-red-500">
+                          Saldo: {money(purchase.total - purchase.amount_paid)}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setPayingPurchase(purchase)}
+                          className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-blue-700"
+                        >
+                          Registrar pago
+                        </button>
+                      </>
+                    )}
                   </div>
 
                   {purchase.notes && (
@@ -125,6 +156,11 @@ export function PurchasesPage() {
       </SectionCard>
 
       <PurchaseFormModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <RegisterPaymentModal
+        open={Boolean(payingPurchase)}
+        purchase={payingPurchase}
+        onClose={() => setPayingPurchase(null)}
+      />
     </div>
   )
 }

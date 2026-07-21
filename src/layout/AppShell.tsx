@@ -81,6 +81,7 @@ const businessGroups: NavGroup[] = [
   {
     title: 'Otros',
     items: [
+      { label: 'Contabilidad', path: '/contabilidad', icon: ChartIcon },
       { label: 'Reportes', path: '/reportes', icon: ChartIcon },
       { label: 'Configuración', path: '/configuracion', icon: GearIcon },
     ],

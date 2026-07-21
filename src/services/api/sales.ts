@@ -1,5 +1,14 @@
 import { apiClient } from './client';
 
+export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER' | 'OTHER';
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  CASH: 'Efectivo',
+  CARD: 'Tarjeta',
+  TRANSFER: 'Transferencia',
+  OTHER: 'Otro',
+};
+
 export type SaleItem = {
   productId: string;
   quantity: number;
@@ -15,6 +24,7 @@ export type CreateSaleInput = {
   notes?: string;
   tax?: number;
   discount?: number;
+  paymentMethod?: PaymentMethod;
   items: SaleItem[];
 };
 
@@ -28,6 +38,7 @@ export type Sale = {
   discount: number;
   total: number;
   status: string;
+  payment_method: PaymentMethod;
   created_at: string;
   customers?: { full_name: string } | null;
   users?: { full_name: string } | null;

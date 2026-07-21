@@ -6,6 +6,7 @@ import { DashboardPage } from '../modules/dashboard/pages/DashboardPage'
 import { InventoryPage } from '../modules/inventory/pages/InventoryPage'
 import { PosPage } from '../modules/pos/pages/PosPage'
 import { InvoicesPage } from '../modules/invoices/pages/InvoicesPage'
+import { AccountingPage } from '../modules/accounting/pages/AccountingPage'
 import { CustomersPage } from '../modules/customers/pages/CustomersPage'
 import { SuppliersPage } from '../modules/suppliers/pages/SuppliersPage'
 import { PurchasesPage } from '../modules/purchases/pages/PurchasesPage'
@@ -123,6 +124,14 @@ export function App() {
           element={
             <BusinessRoute>
               <InvoicesPage />
+            </BusinessRoute>
+          }
+        />
+        <Route
+          path="/contabilidad"
+          element={
+            <BusinessRoute>
+              <AccountingPage />
             </BusinessRoute>
           }
         />
