@@ -8,7 +8,7 @@ import { ProductFormModal } from '../components/ProductFormModal'
 import { ProductDetailModal } from '../components/ProductDetailModal'
 import { ImportInventoryModal } from '../components/ImportInventoryModal'
 import { downloadInventoryTemplate, exportInventoryToExcel } from '../../../services/excel/inventoryTemplate'
-import { listProducts, deleteProduct, wipeAllInventory, type Product } from '../../../services/api/products'
+import { listProducts, deleteProduct, updateProduct, wipeAllInventory, type Product } from '../../../services/api/products'
 
 function money(value: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -55,6 +55,27 @@ export function InventoryPage() {
     if (confirm(`¿Eliminar "${product.name}"? Esta acción no se puede deshacer.`)) {
       deleteMutation.mutate(product.id)
     }
+  }
+
+  const activateAllMutation = useMutation({
+    mutationFn: async (inactiveProducts: Product[]) => {
+      await Promise.all(inactiveProducts.map((p) => updateProduct(p.id, { isActive: true })))
+      return inactiveProducts.length
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      toast.success(`${count} producto(s) activado(s) correctamente`)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al activar los productos')
+    },
+  })
+
+  const handleActivateAll = () => {
+    const inactive = products.filter((p) => !p.isActive)
+    if (inactive.length === 0) return
+    if (!confirm(`¿Activar los ${inactive.length} productos inactivos? Volverán a estar visibles en el POS.`)) return
+    activateAllMutation.mutate(inactive)
   }
 
   const wipeMutation = useMutation({
@@ -113,9 +134,10 @@ export function InventoryPage() {
 
   const stats = useMemo(() => {
     const active = products.filter((p) => p.isActive).length
+    const inactive = products.filter((p) => !p.isActive).length
     const critical = products.filter((p) => p.stock <= p.minStock).length
     const totalStockValue = products.reduce((sum, p) => sum + p.stock * p.cost, 0)
-    return { active, critical, totalStockValue }
+    return { active, inactive, critical, totalStockValue }
   }, [products])
 
   const columns = useMemo<ColumnDef<Product>[]>(
@@ -246,6 +268,18 @@ export function InventoryPage() {
             >
               + Nuevo producto
             </button>
+            {stats.inactive > 0 && (
+              <button
+                type="button"
+                onClick={handleActivateAll}
+                disabled={activateAllMutation.isPending}
+                className="rounded-md border border-emerald-300 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+              >
+                {activateAllMutation.isPending
+                  ? 'Activando...'
+                  : `✅ Activar todos (${stats.inactive})`}
+              </button>
+            )}
             <button
               type="button"
               onClick={handleWipeAll}
