@@ -10,6 +10,7 @@ export type UserRecord = {
   roleName: string | null;
   storeId: string | null;
   storeName: string | null;
+  permissions: string[] | null;
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -27,6 +28,7 @@ export type CreateUserInput = {
   password?: string;
   roleId: string;
   storeId?: string | null;
+  permissions?: string[] | null;
   status?: string;
 };
 
