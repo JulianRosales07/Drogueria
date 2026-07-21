@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { useUiStore } from '../store/ui-store'
 import { useStoreContext } from '../hooks/useStoreContext'
-import { CapsulaLogo } from '../components/CapsulaLogo'
 import { getDashboardSummary } from '../services/api/dashboard'
 import CapsulaLogos from '../assets/Capsulas.png'
 import {
@@ -120,7 +119,7 @@ export function AppShell() {
 
   const isSuperAdmin = user?.role === SUPER_ADMIN_ROLE
   const isOperator = user?.role ? OPERATOR_ROLES.includes(user.role) : false
-  const { iconEmoji, storeTerm } = useStoreContext()
+  const { storeTerm } = useStoreContext()
   const groups = isSuperAdmin ? superAdminGroups : isOperator ? cashierGroups : businessGroups
 
   const { data: summary } = useQuery({
@@ -179,7 +178,6 @@ export function AppShell() {
           <div className="flex w-16 flex-col items-center gap-1 border-r border-slate-200 bg-slate-950 py-4 dark:border-slate-800">
             <div className="mb-3 flex h-9 w-9 items-center justify-center">
               <img src={CapsulaLogos} alt="Capsula" className="h-10 w-10" />
-              {/*<CapsulaLogo className="h-7 w-7" />*/}
             </div>
             <div className="flex flex-1 flex-col items-center gap-1 overflow-x-hidden overflow-y-auto">
               {allItems.map((item) => {
