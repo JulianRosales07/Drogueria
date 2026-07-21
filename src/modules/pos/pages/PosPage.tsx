@@ -150,6 +150,10 @@ export function PosPage() {
       setTicketNumber((n) => n + 1)
       queryClient.invalidateQueries({ queryKey: ['products'] })
       queryClient.invalidateQueries({ queryKey: ['sales'] })
+      // El estado de caja incluye totales "del turno" (ventas en efectivo/otras
+      // hasta ahora) que deben refrescarse tras cada venta, o quedan en caché
+      // con el valor de cuando se abrió la caja.
+      queryClient.invalidateQueries({ queryKey: ['cash-register-current'] })
       toast.success('Venta registrada')
       if (autoPrintEnabled) {
         setTimeout(() => handlePrint(), 400)
