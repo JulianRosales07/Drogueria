@@ -26,7 +26,15 @@ export function LoginPage() {
   const onSubmit = handleSubmit(async (values) => {
     try {
       const result = await loginRequest(values.email, values.password)
-      login(result.user, result.accessToken, result.refreshToken)
+      // Pasamos storeType al store de Zustand para que esté disponible en toda la app
+      login(
+        {
+          ...result.user,
+          storeType: result.user.storeType ?? null,
+        },
+        result.accessToken,
+        result.refreshToken
+      )
       toast.success('Bienvenido al panel')
 
       const SUPER_ADMIN_ROLE = 'Super Administrador'

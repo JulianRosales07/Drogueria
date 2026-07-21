@@ -1,5 +1,7 @@
 import { apiClient } from './client';
 
+export type StoreType = 'PHARMACY' | 'STORE';
+
 export type StoreRecord = {
   id: string;
   name: string;
@@ -7,6 +9,7 @@ export type StoreRecord = {
   address: string | null;
   phone: string | null;
   email: string | null;
+  type: StoreType;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -18,6 +21,7 @@ export type CreateStoreInput = {
   address?: string | null;
   phone?: string | null;
   email?: string | null;
+  type?: StoreType;
 };
 
 export type UpdateStoreInput = Partial<CreateStoreInput> & {

@@ -9,6 +9,7 @@ export type LoginResponse = {
     role: string;
     storeId?: string | null;
     storeName?: string | null;
+    storeType?: 'PHARMACY' | 'STORE' | null;
   };
   accessToken: string;
   refreshToken: string;

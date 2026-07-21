@@ -24,6 +24,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
     address: '',
     phone: '',
     email: '',
+    type: 'PHARMACY' as 'PHARMACY' | 'STORE',
     isActive: true,
   })
 
@@ -35,6 +36,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
         address: store.address || '',
         phone: store.phone || '',
         email: store.email || '',
+        type: store.type || 'PHARMACY',
         isActive: store.isActive,
       })
     } else {
@@ -44,6 +46,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
         address: '',
         phone: '',
         email: '',
+        type: 'PHARMACY',
         isActive: true,
       })
     }
@@ -53,11 +56,11 @@ export function StoreFormModal({ open, store, onClose }: Props) {
     mutationFn: (input: CreateStoreInput) => createStore(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stores'] })
-      toast.success('Droguería creada correctamente')
+      toast.success('Establecimiento creado correctamente')
       onClose()
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message ?? 'Error al crear droguería')
+      toast.error(err?.response?.data?.message ?? 'Error al crear el establecimiento')
     },
   })
 
@@ -66,11 +69,11 @@ export function StoreFormModal({ open, store, onClose }: Props) {
       updateStore(store!.id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stores'] })
-      toast.success('Droguería actualizada correctamente')
+      toast.success('Establecimiento actualizado correctamente')
       onClose()
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message ?? 'Error al actualizar droguería')
+      toast.error(err?.response?.data?.message ?? 'Error al actualizar el establecimiento')
     },
   })
 
@@ -90,6 +93,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
       address: form.address || null,
       phone: form.phone || null,
       email: form.email || null,
+      type: form.type,
     }
 
     if (isEditing) {
@@ -113,10 +117,10 @@ export function StoreFormModal({ open, store, onClose }: Props) {
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
           <div>
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-              {isEditing ? 'Editar droguería' : 'Nueva droguería'}
+              {isEditing ? 'Editar establecimiento' : 'Nuevo establecimiento'}
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {isEditing ? 'Modifica los datos de la droguería.' : 'Completa los datos para registrar una nueva droguería.'}
+              {isEditing ? 'Modifica los datos del establecimiento.' : 'Completa los datos para registrar un nuevo establecimiento.'}
             </p>
           </div>
           <button
@@ -133,15 +137,30 @@ export function StoreFormModal({ open, store, onClose }: Props) {
           {/* Nombre */}
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Nombre de la Droguería <span className="text-red-500">*</span>
+              Nombre del Establecimiento <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              placeholder="Ej: Droguería La Economía"
+              placeholder="Ej: Mi Negocio"
               className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
             />
+          </div>
+
+          {/* Tipo de establecimiento */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Tipo de Establecimiento <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={form.type}
+              onChange={(e) => handleChange('type', e.target.value)}
+              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+            >
+              <option value="PHARMACY">💊 Droguería / Farmacia</option>
+              <option value="STORE">🏪 Tienda General / Comercio</option>
+            </select>
           </div>
 
           {/* NIT y Teléfono */}
@@ -194,7 +213,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
               type="email"
               value={form.email}
               onChange={(e) => handleChange('email', e.target.value)}
-              placeholder="contacto@drogueria.com"
+              placeholder="contacto@negocio.com"
               className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
             />
           </div>
@@ -209,7 +228,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
               <label htmlFor="isActive" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Droguería Activa (Permite accesos y operaciones)
+                Establecimiento Activo (Permite accesos y operaciones)
               </label>
             </div>
           )}
@@ -229,7 +248,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
               disabled={isLoading}
               className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
             >
-              {isLoading ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear droguería'}
+              {isLoading ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear establecimiento'}
             </button>
           </div>
         </form>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
@@ -50,6 +50,21 @@ export function UserFormModal({ open, user, onClose }: Props) {
   // Obtener rol seleccionado actualmente
   const selectedRole = roles.find((r) => r.id === form.roleId)
   const isSuperAdminRole = selectedRole?.name === 'Super Administrador'
+
+  // Determinar el tipo de tienda seleccionada para filtrar roles disponibles
+  const selectedStore = stores.find((s) => s.id === form.storeId)
+  const selectedStoreType = selectedStore?.type ?? null
+
+  // Roles disponibles según el tipo de tienda seleccionada
+  const PHARMACY_ROLES = ['Administrador de Drogueria', 'Cajero']
+  const STORE_ROLES = ['Administrador de Tienda', 'Vendedor']
+  const SUPER_ADMIN_ROLE_NAME = 'Super Administrador'
+
+  const filteredRoles = useMemo(() => {
+    if (!selectedStoreType) return roles // Sin tienda seleccionada, mostrar todos
+    const allowedNames = selectedStoreType === 'PHARMACY' ? PHARMACY_ROLES : STORE_ROLES
+    return roles.filter((r) => allowedNames.includes(r.name) || r.name === SUPER_ADMIN_ROLE_NAME)
+  }, [roles, selectedStoreType])
 
   useEffect(() => {
     if (user) {
@@ -116,7 +131,7 @@ export function UserFormModal({ open, user, onClose }: Props) {
     }
 
     if (!isSuperAdminRole && !form.storeId) {
-      toast.error('Debes seleccionar una droguería para este usuario')
+      toast.error('Debes seleccionar un establecimiento para este usuario')
       return
     }
 
@@ -139,7 +154,12 @@ export function UserFormModal({ open, user, onClose }: Props) {
   }
 
   const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+      // Al cambiar la tienda, limpiar el rol seleccionado para evitar combinaciones inválidas
+      if (field === 'storeId') next.roleId = ''
+      return next
+    })
   }
 
   if (!open) return null
@@ -237,7 +257,7 @@ export function UserFormModal({ open, user, onClose }: Props) {
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               >
                 <option value="">Seleccionar rol</option>
-                {roles.map((r) => (
+                {filteredRoles.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
                   </option>
@@ -262,20 +282,21 @@ export function UserFormModal({ open, user, onClose }: Props) {
             </div>
           </div>
 
-          {/* Droguería (Tenancy) - Ocultar si es Super Admin */}
+          {/* Establecimiento (Tenancy) - Ocultar si es Super Admin */}
           {!isSuperAdminRole && (
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Droguería Asignada <span className="text-red-500">*</span>
+                Establecimiento Asignado <span className="text-red-500">*</span>
               </label>
               <select
                 value={form.storeId}
                 onChange={(e) => handleChange('storeId', e.target.value)}
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               >
-                <option value="">Seleccionar droguería</option>
+                <option value="">Seleccionar establecimiento</option>
                 {stores.map((s) => (
                   <option key={s.id} value={s.id} disabled={!s.isActive}>
+                    {s.type === 'STORE' ? '🏪 ' : '💊 '}
                     {s.name} {!s.isActive && '(Inactiva)'}
                   </option>
                 ))}

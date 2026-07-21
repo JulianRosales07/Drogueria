@@ -36,17 +36,17 @@ export function StoresPage() {
     mutationFn: deleteStore,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stores'] })
-      toast.success('Droguería eliminada correctamente')
+      toast.success('Establecimiento eliminado correctamente')
       setDeletingId(null)
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message ?? 'Error al eliminar droguería')
+      toast.error(err?.response?.data?.message ?? 'Error al eliminar el establecimiento')
       setDeletingId(null)
     },
   })
 
   const handleDelete = (storeId: string, name: string) => {
-    if (!window.confirm(`¿Estás seguro de que deseas eliminar la droguería "${name}"? Se eliminarán todos sus datos.`)) return
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar el establecimiento "${name}"? Se eliminarán todos sus datos.`)) return
     setDeletingId(storeId)
     deleteMutation.mutate(storeId)
   }
@@ -58,9 +58,25 @@ export function StoresPage() {
         accessorKey: 'name',
         cell: ({ row }) => (
           <div>
-            <p className="font-medium text-slate-900 dark:text-white">{row.original.name}</p>
+            <p className="font-medium text-slate-900 dark:text-white">
+              {row.original.type === 'STORE' ? '🏪 ' : '💊 '}
+              {row.original.name}
+            </p>
             <p className="text-xs text-slate-500 dark:text-slate-400">NIT: {row.original.nit || 'No definido'}</p>
           </div>
+        ),
+      },
+      {
+        header: 'Tipo',
+        accessorKey: 'type',
+        cell: ({ row }) => (
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            row.original.type === 'STORE'
+              ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400'
+              : 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400'
+          }`}>
+            {row.original.type === 'STORE' ? 'Tienda General' : 'Droguería / Farmacia'}
+          </span>
         ),
       },
       { header: 'Dirección', accessorKey: 'address', cell: ({ row }) => row.original.address || 'Sin dirección' },
@@ -123,22 +139,22 @@ export function StoresPage() {
   return (
     <div className="space-y-6">
       <SectionCard
-        title="Gestión de Droguerías"
-        description="Administra los diferentes establecimientos (Tenants) del sistema."
+        title="Gestión de Establecimientos"
+        description="Administra los diferentes comercios y establecimientos del sistema."
         action={
           <button
             type="button"
             onClick={handleOpenCreate}
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
           >
-            + Nueva droguería
+            + Nuevo establecimiento
           </button>
         }
       >
         {/* Stats */}
         <div className="mb-6 grid gap-4 md:grid-cols-3">
           <article className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Total droguerías</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Total establecimientos</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{stats.total}</p>
           </article>
           <article className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800/50 dark:bg-emerald-500/10">
@@ -153,10 +169,10 @@ export function StoresPage() {
 
         {/* Table */}
         {storesQuery.isLoading ? (
-          <div className="py-10 text-center text-sm text-slate-400">Cargando droguerías...</div>
+          <div className="py-10 text-center text-sm text-slate-400">Cargando establecimientos...</div>
         ) : storesQuery.isError ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center text-sm text-red-600 dark:border-red-800 dark:bg-red-500/10 dark:text-red-400">
-            Error al cargar droguerías
+            Error al cargar establecimientos
           </div>
         ) : (
           <DataTable columns={columns} data={stores} />

@@ -17,9 +17,13 @@ import { useUiStore } from '../store/ui-store'
 
 const SUPER_ADMIN_ROLE = 'Super Administrador'
 const CASHIER_ROLE = 'Cajero'
+const SELLER_ROLE = 'Vendedor'
 
-/** Rutas a las que el Cajero tiene acceso. Cualquier otra ruta de negocio lo redirige a /pos. */
-const CASHIER_ALLOWED_PATHS = ['/pos', '/reportes', '/caja', '/configuracion']
+/** Roles con permisos tipo cajero (redirección por defecto a POS). */
+const OPERATOR_ROLES = [CASHIER_ROLE, SELLER_ROLE]
+
+/** Rutas a las que los roles de caja/venta tienen acceso. Cualquier otra ruta de negocio los redirige a /pos. */
+const OPERATOR_ALLOWED_PATHS = ['/pos', '/reportes', '/caja', '/configuracion']
 
 function ProtectedLayout() {
   const isAuthenticated = useUiStore((state) => state.isAuthenticated)
@@ -72,8 +76,8 @@ function BusinessRoute({ children }: { children: ReactNode }) {
     return <Navigate to="/droguerias" replace />
   }
 
-  // El Cajero solo puede acceder a Punto de venta, Reportes y Caja
-  if (user?.role === CASHIER_ROLE && !CASHIER_ALLOWED_PATHS.includes(location.pathname)) {
+  // El Cajero/Vendedor solo puede acceder a Punto de venta, Reportes y Caja
+  if (user?.role && OPERATOR_ROLES.includes(user.role) && !OPERATOR_ALLOWED_PATHS.includes(location.pathname)) {
     return <Navigate to="/pos" replace />
   }
 
@@ -82,7 +86,7 @@ function BusinessRoute({ children }: { children: ReactNode }) {
 
 function homeRouteFor(role: string | undefined) {
   if (role === SUPER_ADMIN_ROLE) return '/droguerias'
-  if (role === CASHIER_ROLE) return '/pos'
+  if (role && OPERATOR_ROLES.includes(role)) return '/pos'
   return '/dashboard'
 }
 

@@ -10,6 +10,7 @@ type AuthUser = {
   role: string
   storeId?: string | null
   storeName?: string | null
+  storeType?: 'PHARMACY' | 'STORE' | null
 }
 
 type UiState = {

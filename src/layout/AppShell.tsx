@@ -3,8 +3,10 @@ import { useMemo, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { useUiStore } from '../store/ui-store'
+import { useStoreContext } from '../hooks/useStoreContext'
 import { CapsulaLogo } from '../components/CapsulaLogo'
 import { getDashboardSummary } from '../services/api/dashboard'
+import CapsulaLogos from '../assets/Capsulas.png'
 import {
   BagIcon,
   BoxIcon,
@@ -29,6 +31,8 @@ import {
 
 const SUPER_ADMIN_ROLE = 'Super Administrador'
 const CASHIER_ROLE = 'Cajero'
+const SELLER_ROLE = 'Vendedor'
+const OPERATOR_ROLES = [CASHIER_ROLE, SELLER_ROLE]
 
 type NavItem = {
   label: string
@@ -46,7 +50,7 @@ const superAdminGroups: NavGroup[] = [
   {
     title: 'Administración',
     items: [
-      { label: 'Droguerías', path: '/droguerias', icon: BuildingIcon },
+      { label: 'Establecimientos', path: '/droguerias', icon: BuildingIcon },
       { label: 'Usuarios', path: '/usuarios', icon: UsersIcon },
     ],
   },
@@ -115,13 +119,14 @@ export function AppShell() {
   const user = useUiStore((state) => state.user)
 
   const isSuperAdmin = user?.role === SUPER_ADMIN_ROLE
-  const isCashier = user?.role === CASHIER_ROLE
-  const groups = isSuperAdmin ? superAdminGroups : isCashier ? cashierGroups : businessGroups
+  const isOperator = user?.role ? OPERATOR_ROLES.includes(user.role) : false
+  const { iconEmoji, storeTerm } = useStoreContext()
+  const groups = isSuperAdmin ? superAdminGroups : isOperator ? cashierGroups : businessGroups
 
   const { data: summary } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: getDashboardSummary,
-    enabled: !isSuperAdmin && !isCashier,
+    enabled: !isSuperAdmin && !isOperator,
   })
 
   const badgeValues: Partial<Record<NonNullable<NavItem['badgeKey']>, number>> = {
@@ -143,8 +148,8 @@ export function AppShell() {
   const activeLabel = useMemo(
     () =>
       allItems.find((item) => location.pathname.startsWith(item.path))?.label ??
-      (isSuperAdmin ? 'Droguerías' : isCashier ? 'Punto de venta' : 'Dashboard'),
-    [location.pathname, allItems, isSuperAdmin, isCashier],
+      (isSuperAdmin ? 'Droguerías' : isOperator ? 'Punto de venta' : 'Dashboard'),
+    [location.pathname, allItems, isSuperAdmin, isOperator],
   )
 
   const handleLogout = () => {
@@ -173,7 +178,8 @@ export function AppShell() {
           {/* Rail de iconos, siempre visible */}
           <div className="flex w-16 flex-col items-center gap-1 border-r border-slate-200 bg-slate-950 py-4 dark:border-slate-800">
             <div className="mb-3 flex h-9 w-9 items-center justify-center">
-              <CapsulaLogo className="h-7 w-7" />
+              <img src={CapsulaLogos} alt="Capsula" className="h-10 w-10" />
+              {/*<CapsulaLogo className="h-7 w-7" />*/}
             </div>
             <div className="flex flex-1 flex-col items-center gap-1 overflow-x-hidden overflow-y-auto">
               {allItems.map((item) => {
@@ -241,14 +247,19 @@ export function AppShell() {
             <div className="flex w-64 flex-col p-3">
               <div className="flex items-center justify-between px-1 py-1">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                    Cápsula
-                  </p>
+                    <p className="flex items-center gap-2 truncate text-sm font-semibold text-slate-900 dark:text-white">
+                      <img
+                        src={CapsulaLogos}
+                        alt="Cápsula"
+                        className="h-12 w-12"
+                      />
+                      <span>Cápsula</span>
+                    </p>
                   <p
                     className="truncate text-xs text-slate-400"
-                    title={user?.storeName || (isSuperAdmin ? 'Super Administrador' : 'Panel administrativo')}
+                    title={user?.storeName || (isSuperAdmin ? 'Super Administrador' : storeTerm)}
                   >
-                    {user?.storeName || (isSuperAdmin ? 'Super Administrador' : 'Panel administrativo')}
+                    {user?.storeName || (isSuperAdmin ? 'Super Administrador' : storeTerm)}
                   </p>
                 </div>
                 <button
