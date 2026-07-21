@@ -222,7 +222,7 @@ export function AccountingPage() {
                 <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
                   <p className="text-slate-500 dark:text-slate-400">Ventas en efectivo (turno)</p>
                   <p className="mt-1 font-semibold text-slate-900 dark:text-white">
-                    {money(currentRegister.cashSalesTotalSoFar)}
+                    {money(currentRegister.cashSalesTotalSoFar ?? 0)}
                   </p>
                 </div>
               </div>
