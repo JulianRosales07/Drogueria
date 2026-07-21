@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useUiStore } from '../../../store/ui-store'
 import { login as loginRequest } from '../../../services/api/auth'
-import { CapsulaLogo } from '../../../components/CapsulaLogo'
 import { MoonIcon, SunIcon } from '../../../components/icons'
+import  CapsulaLogo  from '../../../assets/Capsulas.png'
 
 type LoginFormValues = {
   email: string
@@ -91,7 +91,7 @@ export function LoginPage() {
           {/* Logo & Brand Name */}
           <div className="relative z-10">
             <div className="flex items-center gap-3">
-              <CapsulaLogo className="w-10 h-10" />
+              <img src={CapsulaLogo} alt="Capsula" className="h-16 w-16" />
               <span className="text-xl font-semibold tracking-wide text-white">Cápsula</span>
             </div>
           </div>
@@ -111,7 +111,7 @@ export function LoginPage() {
           <div className="w-full max-w-sm mx-auto my-auto">
             {/* Center Logo */}
             <div className="flex justify-center mb-4">
-              <CapsulaLogo className="w-14 h-14" />
+              <img src={CapsulaLogo} alt="Capsula" className="h-25 w-25" />
             </div>
 
             {/* Title & Subtitle */}
