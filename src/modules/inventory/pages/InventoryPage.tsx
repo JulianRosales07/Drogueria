@@ -18,7 +18,8 @@ function money(value: number) {
   }).format(value)
 }
 
-function getStatus(product: Product): 'Disponible' | 'Crítico' {
+function getStatus(product: Product): 'Inactivo' | 'Disponible' | 'Crítico' {
+  if (!product.isActive) return 'Inactivo'
   return product.stock <= product.minStock ? 'Crítico' : 'Disponible'
 }
 
@@ -152,7 +153,9 @@ export function InventoryPage() {
           const tone =
             status === 'Disponible'
               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
-              : 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400'
+              : status === 'Inactivo'
+                ? 'bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400'
+                : 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400'
 
           return <span className={`rounded-md px-2.5 py-1 text-xs font-medium ${tone}`}>{status}</span>
         },
