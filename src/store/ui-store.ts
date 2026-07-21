@@ -11,6 +11,7 @@ type AuthUser = {
   storeId?: string | null
   storeName?: string | null
   storeType?: 'PHARMACY' | 'STORE' | null
+  permissions?: string[] | null
 }
 
 type UiState = {

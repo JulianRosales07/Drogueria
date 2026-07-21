@@ -42,7 +42,7 @@ function PublicRoute() {
   const user = useUiStore((state) => state.user)
 
   if (isAuthenticated) {
-    return <Navigate to={homeRouteFor(user?.role)} replace />
+    return <Navigate to={homeRouteFor(user)} replace />
   }
 
   return <LoginPage />
@@ -64,6 +64,30 @@ function SuperAdminRoute({ children }: { children: ReactNode }) {
   return children
 }
 
+/** Ruta accesible para cualquier tipo de administrador (Super Admin, Admin de Droguería, Admin de Tienda) */
+function AdminRoute({ children }: { children: ReactNode }) {
+  const isAuthenticated = useUiStore((state) => state.isAuthenticated)
+  const user = useUiStore((state) => state.user)
+  const location = useLocation()
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (user?.role && OPERATOR_ROLES.includes(user.role)) {
+    return <Navigate to="/pos" replace />
+  }
+
+  if (user?.role !== SUPER_ADMIN_ROLE && user?.permissions && user.permissions.length > 0) {
+    if (!user.permissions.includes(location.pathname)) {
+      const fallback = user.permissions[0] || '/pos'
+      return <Navigate to={fallback} replace />
+    }
+  }
+
+  return children
+}
+
 /** Ruta solo accesible para roles de negocio (no Super Admin) */
 function BusinessRoute({ children }: { children: ReactNode }) {
   const isAuthenticated = useUiStore((state) => state.isAuthenticated)
@@ -78,17 +102,23 @@ function BusinessRoute({ children }: { children: ReactNode }) {
     return <Navigate to="/droguerias" replace />
   }
 
-  // El Cajero/Vendedor solo puede acceder a Punto de venta, Reportes y Caja
-  if (user?.role && OPERATOR_ROLES.includes(user.role) && !OPERATOR_ALLOWED_PATHS.includes(location.pathname)) {
+  // Verificar si hay permisos explícitos asignados al usuario
+  if (user?.permissions && user.permissions.length > 0) {
+    if (!user.permissions.includes(location.pathname)) {
+      const fallback = user.permissions[0] || '/pos'
+      return <Navigate to={fallback} replace />
+    }
+  } else if (user?.role && OPERATOR_ROLES.includes(user.role) && !OPERATOR_ALLOWED_PATHS.includes(location.pathname)) {
     return <Navigate to="/pos" replace />
   }
 
   return children
 }
 
-function homeRouteFor(role: string | undefined) {
-  if (role === SUPER_ADMIN_ROLE) return '/droguerias'
-  if (role && OPERATOR_ROLES.includes(role)) return '/pos'
+function homeRouteFor(user: { role?: string; permissions?: string[] | null } | null) {
+  if (user?.role === SUPER_ADMIN_ROLE) return '/droguerias'
+  if (user?.permissions && user.permissions.length > 0) return user.permissions[0]
+  if (user?.role && OPERATOR_ROLES.includes(user.role)) return '/pos'
   return '/dashboard'
 }
 
@@ -100,8 +130,8 @@ export function App() {
       <Route path="/login" element={<PublicRoute />} />
 
       <Route element={<ProtectedLayout />}>
-        {/* Redirigir raíz según el rol */}
-        <Route path="/" element={<Navigate to={homeRouteFor(user?.role)} replace />} />
+        {/* Redirigir raíz según el rol y permisos */}
+        <Route path="/" element={<Navigate to={homeRouteFor(user)} replace />} />
 
         <Route
           path="/pos"
@@ -136,7 +166,7 @@ export function App() {
           }
         />
 
-        {/* Módulos exclusivos del Super Administrador */}
+        {/* Módulos de administración */}
         <Route
           path="/droguerias"
           element={
@@ -148,9 +178,9 @@ export function App() {
         <Route
           path="/usuarios"
           element={
-            <SuperAdminRoute>
+            <AdminRoute>
               <UsersPage />
-            </SuperAdminRoute>
+            </AdminRoute>
           }
         />
 

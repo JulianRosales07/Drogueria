@@ -79,6 +79,10 @@ const businessGroups: NavGroup[] = [
     ],
   },
   {
+    title: 'Administración',
+    items: [{ label: 'Usuarios', path: '/usuarios', icon: UsersIcon }],
+  },
+  {
     title: 'Otros',
     items: [
       { label: 'Contabilidad', path: '/contabilidad', icon: ChartIcon },
@@ -87,6 +91,7 @@ const businessGroups: NavGroup[] = [
     ],
   },
 ]
+
 
 // El Cajero solo debe ver Punto de venta, Caja, Reportes y Configuración
 const cashierGroups: NavGroup[] = [
@@ -124,7 +129,20 @@ export function AppShell() {
   const isSuperAdmin = user?.role === SUPER_ADMIN_ROLE
   const isOperator = user?.role ? OPERATOR_ROLES.includes(user.role) : false
   const { storeTerm } = useStoreContext()
-  const groups = isSuperAdmin ? superAdminGroups : isOperator ? cashierGroups : businessGroups
+  const baseGroups = isSuperAdmin ? superAdminGroups : isOperator ? cashierGroups : businessGroups
+
+  const groups = useMemo(() => {
+    if (isSuperAdmin || !user?.permissions || user.permissions.length === 0) {
+      return baseGroups
+    }
+    const allowedSet = new Set(user.permissions)
+    return baseGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => allowedSet.has(item.path)),
+      }))
+      .filter((group) => group.items.length > 0)
+  }, [baseGroups, isSuperAdmin, user?.permissions])
 
   const { data: summary } = useQuery({
     queryKey: ['dashboard-summary'],

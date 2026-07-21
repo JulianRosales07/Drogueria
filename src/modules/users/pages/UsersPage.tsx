@@ -75,7 +75,7 @@ export function UsersPage() {
         ),
       },
       {
-        header: 'Droguería',
+        header: 'Establecimiento',
         accessorKey: 'storeName',
         cell: ({ row }) => (
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
