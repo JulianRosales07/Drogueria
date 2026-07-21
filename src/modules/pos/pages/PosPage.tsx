@@ -217,31 +217,42 @@ export function PosPage() {
     }
   }
 
+  /**
+   * Suma en UNIDADES BASE todo lo que ya está reservado en el carrito para un producto,
+   * sin importar la presentación (Unidad, Caja x10, etc). Permite excluir una presentación
+   * (por su factor) para calcular cuánto queda disponible para ESA línea en particular.
+   */
+  const getReservedBaseQuantity = (productId: string, excludeFactor?: number) =>
+    cart.reduce((sum, item) => {
+      if (item.productId !== productId) return sum
+      if (excludeFactor !== undefined && item.unitFactor === excludeFactor) return sum
+      return sum + item.quantity * item.unitFactor
+    }, 0)
+
   const addToCartWithPresentation = (
     product: Product,
     presentation: PresentationOption,
     quantity: number = 1,
   ) => {
-    const baseQuantityNeeded = quantity * presentation.factor
+    const existing = cart.find(
+      (item) => item.productId === product.id && item.unitFactor === presentation.factor,
+    )
+    const newQuantity = (existing?.quantity ?? 0) + quantity
+    const reservedByOtherLines = getReservedBaseQuantity(product.id, presentation.factor)
+    const totalReserved = reservedByOtherLines + newQuantity * presentation.factor
 
-    if (baseQuantityNeeded > product.stock) {
+    if (totalReserved > product.stock) {
       toast.error('Stock insuficiente para esa presentación')
       return
     }
 
     setCart((current) => {
-      const existing = current.find(
+      const existingItem = current.find(
         (item) => item.productId === product.id && item.unitFactor === presentation.factor,
       )
-      if (existing) {
-        const newQuantity = existing.quantity + quantity
-        const existingBaseTotal = newQuantity * presentation.factor
-        if (existingBaseTotal > product.stock) {
-          toast.error('Stock insuficiente')
-          return current
-        }
+      if (existingItem) {
         return current.map((item) =>
-          item === existing ? { ...item, quantity: newQuantity } : item,
+          item === existingItem ? { ...item, quantity: newQuantity } : item,
         )
       }
       return [
@@ -320,9 +331,12 @@ export function PosPage() {
       return
     }
     const item = cart[index]
-    if (item && newQuantity * item.unitFactor > item.stock) {
-      toast.error('Stock insuficiente')
-      return
+    if (item) {
+      const reservedByOtherLines = getReservedBaseQuantity(item.productId, item.unitFactor)
+      if (reservedByOtherLines + newQuantity * item.unitFactor > item.stock) {
+        toast.error('Stock insuficiente')
+        return
+      }
     }
     setCart((current) =>
       current.map((cartItem, i) => (i === index ? { ...cartItem, quantity: newQuantity } : cartItem)),
@@ -572,11 +586,18 @@ export function PosPage() {
                           onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
                           className="w-12 rounded border border-slate-200 bg-white py-0.5 text-center text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                           min={1}
-                          max={Math.floor(item.stock / item.unitFactor)}
+                          max={Math.floor(
+                            (item.stock - getReservedBaseQuantity(item.productId, item.unitFactor)) /
+                              item.unitFactor,
+                          )}
                         />
                         <button
                           onClick={() => updateQuantity(index, item.quantity + 1)}
-                          disabled={(item.quantity + 1) * item.unitFactor > item.stock}
+                          disabled={
+                            getReservedBaseQuantity(item.productId, item.unitFactor) +
+                              (item.quantity + 1) * item.unitFactor >
+                            item.stock
+                          }
                           className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
                         >
                           +
@@ -921,7 +942,10 @@ export function PosPage() {
                     addToCartWithPresentation(presentationPicker, presentation)
                     setPresentationPicker(null)
                   }}
-                  disabled={presentation.factor > presentationPicker.stock}
+                  disabled={
+                    getReservedBaseQuantity(presentationPicker.id) + presentation.factor >
+                    presentationPicker.stock
+                  }
                   className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-left transition hover:border-blue-500 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-blue-500/10"
                 >
                   <div>
