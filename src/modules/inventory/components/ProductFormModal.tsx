@@ -171,21 +171,6 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
     },
   })
 
-  const deactivateMutation = useMutation({
-    mutationFn: async () => {
-      if (!product) return
-      return updateProduct(product.id, { isActive: false })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-      toast.success('Producto desactivado. Ya no aparecerá en el POS.')
-      onClose()
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Error al desactivar el producto')
-    },
-  })
-
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!product) return
@@ -197,16 +182,7 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
       onClose()
     },
     onError: (error: any) => {
-      const message = error.response?.data?.message || 'Error al eliminar el producto'
-      if (error.response?.data?.message?.includes('historial')) {
-        // El producto tiene ventas/compras/movimientos: no se puede borrar sin romper esos
-        // registros históricos. Se ofrece desactivarlo en su lugar con un solo clic.
-        if (confirm(`${message}\n\n¿Deseas desactivarlo ahora?`)) {
-          deactivateMutation.mutate()
-        }
-        return
-      }
-      toast.error(message)
+      toast.error(error.response?.data?.message || 'Error al eliminar el producto')
     },
   })
 
@@ -304,7 +280,11 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
 
   const handleDelete = () => {
     if (!product) return
-    if (confirm(`¿Eliminar "${product.name}"? Esta acción no se puede deshacer.`)) {
+    if (
+      confirm(
+        `¿Eliminar "${product.name}"? Esto también borrará sus ventas, compras y movimientos de inventario asociados. Esta acción no se puede deshacer.`,
+      )
+    ) {
       deleteMutation.mutate()
     }
   }
@@ -696,14 +676,10 @@ export function ProductFormModal({ open, product, onClose }: ProductFormModalPro
               <button
                 type="button"
                 onClick={handleDelete}
-                disabled={deleteMutation.isPending || deactivateMutation.isPending}
+                disabled={deleteMutation.isPending}
                 className="rounded-md px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-500/10"
               >
-                {deleteMutation.isPending
-                  ? 'Eliminando...'
-                  : deactivateMutation.isPending
-                    ? 'Desactivando...'
-                    : 'Eliminar producto'}
+                {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar producto'}
               </button>
             ) : (
               <span />

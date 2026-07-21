@@ -52,7 +52,11 @@ export function InventoryPage() {
   })
 
   const handleDelete = (product: Product) => {
-    if (confirm(`¿Eliminar "${product.name}"? Esta acción no se puede deshacer.`)) {
+    if (
+      confirm(
+        `¿Eliminar "${product.name}"? Esto también borrará sus ventas, compras y movimientos de inventario asociados. Esta acción no se puede deshacer.`,
+      )
+    ) {
       deleteMutation.mutate(product.id)
     }
   }
