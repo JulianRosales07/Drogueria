@@ -34,17 +34,32 @@ function invoiceNumber(saleId: string) {
   return `#${saleId.substring(0, 8).toUpperCase()}`
 }
 
+type RangePreset = 'today' | 'week' | 'month' | 'custom'
+
 export function InvoicesPage() {
   const today = useMemo(() => new Date(), [])
-  const monthAgo = useMemo(() => {
-    const d = new Date()
-    d.setDate(d.getDate() - 30)
-    return d
-  }, [])
 
-  const [dateFrom, setDateFrom] = useState(toDateInputValue(monthAgo))
+  // Por defecto se muestran solo las facturas del día actual.
+  const [preset, setPreset] = useState<RangePreset>('today')
+  const [dateFrom, setDateFrom] = useState(toDateInputValue(today))
   const [dateTo, setDateTo] = useState(toDateInputValue(today))
   const [search, setSearch] = useState('')
+
+  const applyPreset = (nextPreset: RangePreset) => {
+    setPreset(nextPreset)
+    if (nextPreset === 'custom') return
+
+    const now = new Date()
+    if (nextPreset === 'today') {
+      setDateFrom(toDateInputValue(now))
+      setDateTo(toDateInputValue(now))
+      return
+    }
+    const start = new Date(now)
+    start.setDate(start.getDate() - (nextPreset === 'week' ? 7 : 30))
+    setDateFrom(toDateInputValue(start))
+    setDateTo(toDateInputValue(now))
+  }
   const [viewingSale, setViewingSale] = useState<Sale | null>(null)
   const [printingSale, setPrintingSale] = useState<Sale | null>(null)
 
@@ -180,7 +195,9 @@ export function InvoicesPage() {
       >
         <div className="mb-6 grid gap-4 sm:grid-cols-3">
           <article className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Facturas en el rango</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {preset === 'today' ? 'Facturas de hoy' : 'Facturas en el rango'}
+            </p>
             <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{stats.count}</p>
           </article>
           <article className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
@@ -193,8 +210,32 @@ export function InvoicesPage() {
           </article>
         </div>
 
+        <div className="mb-3 flex gap-1.5">
+          {(
+            [
+              { key: 'today', label: 'Hoy' },
+              { key: 'week', label: '7 días' },
+              { key: 'month', label: '30 días' },
+              { key: 'custom', label: 'Rango' },
+            ] as { key: RangePreset; label: string }[]
+          ).map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => applyPreset(opt.key)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                preset === opt.key
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
         <div className="mb-4 flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[220px]">
+          <div className="flex-1 min-w-55">
             <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
               Buscar
             </label>
@@ -211,7 +252,10 @@ export function InvoicesPage() {
             <input
               type="date"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                setPreset('custom')
+              }}
               className="rounded-md border border-slate-200 px-2 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
           </div>
@@ -220,7 +264,10 @@ export function InvoicesPage() {
             <input
               type="date"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => {
+                setDateTo(e.target.value)
+                setPreset('custom')
+              }}
               className="rounded-md border border-slate-200 px-2 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
           </div>
@@ -234,7 +281,9 @@ export function InvoicesPage() {
           </div>
         ) : filteredSales.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 py-10 text-center text-sm text-slate-400 dark:border-slate-700">
-            No hay facturas registradas en el rango seleccionado.
+            {preset === 'today'
+              ? 'Aún no hay facturas registradas hoy.'
+              : 'No hay facturas registradas en el rango seleccionado.'}
           </div>
         ) : (
           <DataTable data={filteredSales} columns={columns} />
