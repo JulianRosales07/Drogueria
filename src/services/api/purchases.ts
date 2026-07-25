@@ -16,6 +16,11 @@ export type PurchaseItemInput = {
   unitFactor?: number;
   unitLabel?: string;
   productUnitId?: string | null;
+  /**
+   * Precio de venta a aplicar al producto (o a la presentación comprada).
+   * Si se omite o va null, el precio de venta no se toca.
+   */
+  salePrice?: number | null;
 };
 
 export type CreatePurchaseInput = {
@@ -27,6 +32,8 @@ export type CreatePurchaseInput = {
   paymentStatus?: PurchasePaymentStatus;
   amountPaid?: number;
 };
+
+export type UpdatePurchaseInput = CreatePurchaseInput;
 
 export type SupplierPayment = {
   id: string;
@@ -48,17 +55,21 @@ export type Purchase = {
   payment_status: PurchasePaymentStatus;
   amount_paid: number;
   created_at: string;
+  subtotal: number;
   suppliers?: { business_name: string } | null;
+  users?: { full_name: string } | null;
   purchase_items?: Array<{
     id: string;
     product_id: string;
+    product_unit_id: string | null;
     quantity: number;
     unit_cost: number;
     line_total: number;
     unit_label: string;
     unit_factor: number;
     unit_quantity: number;
-    products: { name: string };
+    sale_price: number | null;
+    products: { name: string; sku?: string };
   }>;
   supplier_payments?: SupplierPayment[];
 };
@@ -77,6 +88,17 @@ export async function listPurchases(): Promise<Purchase[]> {
 
 export async function createPurchase(input: CreatePurchaseInput): Promise<Purchase> {
   const { data } = await apiClient.post<{ success: boolean; data: Purchase }>('/purchases', input);
+  return data.data;
+}
+
+export async function updatePurchase(
+  purchaseId: string,
+  input: UpdatePurchaseInput,
+): Promise<Purchase> {
+  const { data } = await apiClient.put<{ success: boolean; data: Purchase }>(
+    `/purchases/${purchaseId}`,
+    input,
+  );
   return data.data;
 }
 
