@@ -35,7 +35,13 @@ const PAYMENT_STATUS_STYLE: Record<Purchase['payment_status'], string> = {
 
 export function PurchasesPage() {
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null)
   const [payingPurchase, setPayingPurchase] = useState<Purchase | null>(null)
+
+  const closeForm = () => {
+    setModalOpen(false)
+    setEditingPurchase(null)
+  }
 
   const purchasesQuery = useQuery({
     queryKey: ['purchases'],
@@ -52,7 +58,10 @@ export function PurchasesPage() {
         action={
           <button
             type="button"
-            onClick={() => setModalOpen(true)}
+            onClick={() => {
+              setEditingPurchase(null)
+              setModalOpen(true)
+            }}
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
           >
             + Nueva compra (Entrada)
@@ -104,6 +113,16 @@ export function PurchasesPage() {
                     <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
                       {money(purchase.total)}
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingPurchase(purchase)
+                        setModalOpen(true)
+                      }}
+                      className="rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      ✏️ Editar compra
+                    </button>
                     {purchase.payment_status !== 'PAID' && (
                       <>
                         <p className="text-xs text-red-500">
@@ -155,7 +174,7 @@ export function PurchasesPage() {
         )}
       </SectionCard>
 
-      <PurchaseFormModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <PurchaseFormModal open={modalOpen} purchase={editingPurchase} onClose={closeForm} />
       <RegisterPaymentModal
         open={Boolean(payingPurchase)}
         purchase={payingPurchase}

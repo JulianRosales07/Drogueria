@@ -16,16 +16,13 @@ import { UsersPage } from '../modules/users/pages/UsersPage'
 import { StoresPage } from '../modules/stores/pages/StoresPage'
 import { CashRegisterPage } from '../modules/cash-register/pages/CashRegisterPage'
 import { useUiStore } from '../store/ui-store'
-
-const SUPER_ADMIN_ROLE = 'Super Administrador'
-const CASHIER_ROLE = 'Cajero'
-const SELLER_ROLE = 'Vendedor'
-
-/** Roles con permisos tipo cajero (redirección por defecto a POS). */
-const OPERATOR_ROLES = [CASHIER_ROLE, SELLER_ROLE]
-
-/** Rutas a las que los roles de caja/venta tienen acceso. Cualquier otra ruta de negocio los redirige a /pos. */
-const OPERATOR_ALLOWED_PATHS = ['/pos', '/facturas', '/reportes', '/caja', '/configuracion']
+import {
+  OPERATOR_ALLOWED_PATHS,
+  OPERATOR_ROLES,
+  SUPER_ADMIN_ROLE,
+  canAccessPath,
+  fallbackPathFor,
+} from '../shared/utils/permissions'
 
 function ProtectedLayout() {
   const isAuthenticated = useUiStore((state) => state.isAuthenticated)
@@ -78,11 +75,8 @@ function AdminRoute({ children }: { children: ReactNode }) {
     return <Navigate to="/pos" replace />
   }
 
-  if (user?.role !== SUPER_ADMIN_ROLE && user?.permissions && user.permissions.length > 0) {
-    if (!user.permissions.includes(location.pathname)) {
-      const fallback = user.permissions[0] || '/pos'
-      return <Navigate to={fallback} replace />
-    }
+  if (user?.role !== SUPER_ADMIN_ROLE && !canAccessPath(user, location.pathname)) {
+    return <Navigate to={fallbackPathFor(user)} replace />
   }
 
   return children
@@ -104,9 +98,8 @@ function BusinessRoute({ children }: { children: ReactNode }) {
 
   // Verificar si hay permisos explícitos asignados al usuario
   if (user?.permissions && user.permissions.length > 0) {
-    if (!user.permissions.includes(location.pathname)) {
-      const fallback = user.permissions[0] || '/pos'
-      return <Navigate to={fallback} replace />
+    if (!canAccessPath(user, location.pathname)) {
+      return <Navigate to={fallbackPathFor(user)} replace />
     }
   } else if (user?.role && OPERATOR_ROLES.includes(user.role) && !OPERATOR_ALLOWED_PATHS.includes(location.pathname)) {
     return <Navigate to="/pos" replace />
@@ -117,9 +110,7 @@ function BusinessRoute({ children }: { children: ReactNode }) {
 
 function homeRouteFor(user: { role?: string; permissions?: string[] | null } | null) {
   if (user?.role === SUPER_ADMIN_ROLE) return '/droguerias'
-  if (user?.permissions && user.permissions.length > 0) return user.permissions[0]
-  if (user?.role && OPERATOR_ROLES.includes(user.role)) return '/pos'
-  return '/dashboard'
+  return fallbackPathFor(user)
 }
 
 export function App() {

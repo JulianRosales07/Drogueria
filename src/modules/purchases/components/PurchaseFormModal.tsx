@@ -3,8 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { listSuppliers } from '../../../services/api/suppliers'
 import { listProducts, type Product } from '../../../services/api/products'
+import { ProductFormModal } from '../../inventory/components/ProductFormModal'
 import {
   createPurchase,
+  updatePurchase,
+  type Purchase,
   type PurchaseItemInput,
   type PurchasePaymentStatus,
   PURCHASE_PAYMENT_STATUS_LABELS,
@@ -12,18 +15,35 @@ import {
 
 type PurchaseFormModalProps = {
   open: boolean
+  /** Si viene una compra, el modal trabaja en modo edición */
+  purchase?: Purchase | null
   onClose: () => void
 }
 
-type SelectedItem = {
-  product: Product
-  selectedUnit: {
-    id: string | null
-    name: string
-    factor: number
-    cost: number // default value: product.cost * factor
-  }
+/**
+ * Línea de la compra. Se guarda el nombre del producto además del id para poder
+ * editar compras cuyos productos ya no estén en el listado activo.
+ *
+ * `salePrice` es el precio de venta que quedará en el producto/presentación:
+ * viene precargado con el precio actual y si se deja vacío no se modifica.
+ */
+type LineItem = {
+  productId: string
+  productName: string
+  productSku: string
+  unitId: string | null
+  unitName: string
+  unitFactor: number
   quantity: number
+  cost: number
+  salePrice: string
+}
+
+type PresentationOption = {
+  id: string | null
+  name: string
+  factor: number
+  price: number
   cost: number
 }
 
@@ -35,10 +55,25 @@ function money(value: number) {
   }).format(value)
 }
 
-export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
-  const queryClient = useQueryClient()
+/** Presentaciones disponibles de un producto (la "Unidad" base siempre existe) */
+function buildPresentations(product: Product): PresentationOption[] {
+  return [
+    { id: null, name: 'Unidad', factor: 1, price: product.price, cost: product.cost },
+    ...product.units.map((u) => ({
+      id: u.id,
+      name: u.name,
+      factor: u.factor,
+      price: u.price,
+      cost: u.cost || product.cost * u.factor,
+    })),
+  ]
+}
 
-  // Form states
+export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModalProps) {
+  const queryClient = useQueryClient()
+  const isEditing = Boolean(purchase)
+
+  // Datos generales de la compra
   const [selectedSupplierId, setSelectedSupplierId] = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [notes, setNotes] = useState('')
@@ -46,17 +81,19 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
   const [paymentStatus, setPaymentStatus] = useState<PurchasePaymentStatus>('PAID')
   const [amountPaid, setAmountPaid] = useState(0)
 
-  // Items state
-  const [items, setItems] = useState<SelectedItem[]>([])
+  const [items, setItems] = useState<LineItem[]>([])
 
-  // Search product states
+  // Buscador / selección del producto a agregar
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [selectedUnit, setSelectedUnit] = useState<{ id: string | null; name: string; factor: number; price: number } | null>(null)
+  const [selectedUnit, setSelectedUnit] = useState<PresentationOption | null>(null)
   const [itemCost, setItemCost] = useState(0)
+  const [itemSalePrice, setItemSalePrice] = useState('')
   const [itemQuantity, setItemQuantity] = useState(1)
 
-  // Fetch suppliers and products
+  // Crear un producto que no existe sin perder la compra en curso
+  const [productModalOpen, setProductModalOpen] = useState(false)
+
   const suppliersQuery = useQuery({
     queryKey: ['suppliers'],
     queryFn: listSuppliers,
@@ -72,24 +109,55 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
   const suppliers = suppliersQuery.data ?? []
   const products = productsQuery.data ?? []
 
-  // Reset form when modal opens/closes
-  useEffect(() => {
-    if (!open) return
-    setSelectedSupplierId('')
-    setInvoiceNumber('')
-    setNotes('')
-    setTax(0)
-    setPaymentStatus('PAID')
-    setAmountPaid(0)
-    setItems([])
-    setSearchQuery('')
+  const resetItemDraft = () => {
     setSelectedProduct(null)
     setSelectedUnit(null)
     setItemCost(0)
+    setItemSalePrice('')
     setItemQuantity(1)
-  }, [open])
+  }
 
-  // Filtered products for search autocomplete
+  // Precarga del formulario: compra existente (edición) o formulario limpio
+  useEffect(() => {
+    if (!open) return
+
+    if (purchase) {
+      setSelectedSupplierId(purchase.supplier_id)
+      setInvoiceNumber(purchase.invoice_number ?? '')
+      setNotes(purchase.notes ?? '')
+      setTax(Number(purchase.tax) || 0)
+      setPaymentStatus(purchase.payment_status)
+      setAmountPaid(Number(purchase.amount_paid) || 0)
+      setItems(
+        (purchase.purchase_items ?? []).map((item) => ({
+          productId: item.product_id,
+          productName: item.products?.name ?? 'Producto eliminado',
+          productSku: item.products?.sku ?? '',
+          unitId: item.product_unit_id,
+          unitName: item.unit_label || 'Unidad',
+          unitFactor: Number(item.unit_factor) || 1,
+          quantity: Number(item.unit_quantity) || 1,
+          cost: Number(item.unit_cost) || 0,
+          // Vacío = no tocar el precio de venta actual del producto
+          salePrice: item.sale_price !== null && item.sale_price !== undefined ? String(item.sale_price) : '',
+        })),
+      )
+    } else {
+      setSelectedSupplierId('')
+      setInvoiceNumber('')
+      setNotes('')
+      setTax(0)
+      setPaymentStatus('PAID')
+      setAmountPaid(0)
+      setItems([])
+    }
+
+    setSearchQuery('')
+    resetItemDraft()
+    // Solo al abrir o al cambiar de compra: así refrescar el listado de
+    // productos (por ejemplo al crear uno nuevo) no descarta lo ya capturado
+  }, [open, purchase])
+
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return []
     const q = searchQuery.toLowerCase()
@@ -99,47 +167,43 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.sku.toLowerCase().includes(q) ||
-          p.barcode?.toLowerCase().includes(q)
+          p.barcode?.toLowerCase().includes(q),
       )
       .slice(0, 5)
   }, [products, searchQuery])
 
-  // Available presentations for selected product
-  const presentationOptions = useMemo(() => {
-    if (!selectedProduct) return []
-    return [
-      { id: null, name: 'Unidad', factor: 1, price: selectedProduct.price, cost: selectedProduct.cost },
-      ...selectedProduct.units.map((u) => ({
-        id: u.id,
-        name: u.name,
-        factor: u.factor,
-        price: u.price,
-        cost: selectedProduct.cost * u.factor, // default cost estimation
-      })),
-    ]
-  }, [selectedProduct])
+  const presentationOptions = useMemo(
+    () => (selectedProduct ? buildPresentations(selectedProduct) : []),
+    [selectedProduct],
+  )
 
-  // Handle product selection from search
-  const handleSelectProduct = (product: Product) => {
-    setSelectedProduct(product)
-    setSearchQuery('')
-    // Default to first unit (Unidad)
-    const unit = { id: null, name: 'Unidad', factor: 1, price: product.price }
-    setSelectedUnit(unit)
-    setItemCost(product.cost)
-    setItemQuantity(1)
-  };
-
-  const handleUnitChange = (unitId: string | null) => {
-    if (!selectedProduct) return
-    const opt = presentationOptions.find(o => o.id === unitId)
-    if (opt) {
-      setSelectedUnit({ id: opt.id, name: opt.name, factor: opt.factor, price: opt.price })
-      setItemCost(opt.cost)
-    }
+  /** Precio de venta vigente de una línea, para mostrarlo como referencia */
+  const currentPriceOf = (item: LineItem): number | null => {
+    const product = products.find((p) => p.id === item.productId)
+    if (!product) return null
+    if (!item.unitId) return product.price
+    return product.units.find((u) => u.id === item.unitId)?.price ?? null
   }
 
-  // Add item to buy list
+  const handleSelectProduct = (product: Product) => {
+    const options = buildPresentations(product)
+    const base = options[0]!
+    setSelectedProduct(product)
+    setSearchQuery('')
+    setSelectedUnit(base)
+    setItemCost(base.cost)
+    setItemSalePrice(String(base.price ?? ''))
+    setItemQuantity(1)
+  }
+
+  const handleUnitChange = (unitId: string | null) => {
+    const opt = presentationOptions.find((o) => o.id === unitId)
+    if (!opt) return
+    setSelectedUnit(opt)
+    setItemCost(opt.cost)
+    setItemSalePrice(String(opt.price ?? ''))
+  }
+
   const handleAddItem = () => {
     if (!selectedProduct || !selectedUnit) return
 
@@ -153,50 +217,51 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
     }
 
     const existingIndex = items.findIndex(
-      (it) => it.product.id === selectedProduct.id && it.selectedUnit.id === selectedUnit.id
+      (it) => it.productId === selectedProduct.id && it.unitId === selectedUnit.id,
     )
 
     if (existingIndex > -1) {
-      // Update quantity
-      const newItems = [...items]
-      newItems[existingIndex].quantity += itemQuantity
-      setItems(newItems)
+      setItems((current) =>
+        current.map((it, i) =>
+          i === existingIndex
+            ? { ...it, quantity: it.quantity + itemQuantity, cost: itemCost, salePrice: itemSalePrice }
+            : it,
+        ),
+      )
     } else {
-      setItems([
-        ...items,
+      setItems((current) => [
+        ...current,
         {
-          product: selectedProduct,
-          selectedUnit: {
-            id: selectedUnit.id,
-            name: selectedUnit.name,
-            factor: selectedUnit.factor,
-            cost: itemCost,
-          },
+          productId: selectedProduct.id,
+          productName: selectedProduct.name,
+          productSku: selectedProduct.sku,
+          unitId: selectedUnit.id,
+          unitName: selectedUnit.name,
+          unitFactor: selectedUnit.factor,
           quantity: itemQuantity,
           cost: itemCost,
+          salePrice: itemSalePrice,
         },
       ])
     }
 
-    // Reset search product state
-    setSelectedProduct(null)
-    setSelectedUnit(null)
-    setItemCost(0)
-    setItemQuantity(1)
+    resetItemDraft()
     toast.success('Producto agregado a la lista')
   }
 
-  const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index))
+  const updateItem = (index: number, changes: Partial<LineItem>) => {
+    setItems((current) => current.map((it, i) => (i === index ? { ...it, ...changes } : it)))
   }
 
-  const subtotal = useMemo(() => {
-    return items.reduce((sum, item) => sum + item.quantity * item.cost, 0)
-  }, [items])
+  const handleRemoveItem = (index: number) => {
+    setItems((current) => current.filter((_, i) => i !== index))
+  }
 
-  const total = useMemo(() => {
-    return subtotal + tax
-  }, [subtotal, tax])
+  const subtotal = useMemo(
+    () => items.reduce((sum, item) => sum + item.quantity * item.cost, 0),
+    [items],
+  )
+  const total = useMemo(() => subtotal + tax, [subtotal, tax])
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -206,20 +271,27 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
       if (items.length === 0) {
         throw new Error('La lista de compra está vacía')
       }
+      if (items.some((it) => it.quantity <= 0)) {
+        throw new Error('Todas las cantidades deben ser mayores a 0')
+      }
       if (paymentStatus === 'PARTIAL' && (amountPaid <= 0 || amountPaid >= total)) {
         throw new Error('El monto abonado debe ser mayor a 0 y menor al total para un pago parcial')
       }
 
-      const purchaseItems: PurchaseItemInput[] = items.map((it) => ({
-        productId: it.product.id,
-        quantity: it.quantity,
-        unitCost: it.cost,
-        unitFactor: it.selectedUnit.factor,
-        unitLabel: it.selectedUnit.name,
-        productUnitId: it.selectedUnit.id,
-      }))
+      const purchaseItems: PurchaseItemInput[] = items.map((it) => {
+        const parsedPrice = it.salePrice.trim() === '' ? null : Number(it.salePrice)
+        return {
+          productId: it.productId,
+          quantity: Number(it.quantity),
+          unitCost: Number(it.cost),
+          unitFactor: it.unitFactor,
+          unitLabel: it.unitName,
+          productUnitId: it.unitId,
+          salePrice: parsedPrice !== null && parsedPrice > 0 ? parsedPrice : null,
+        }
+      })
 
-      return createPurchase({
+      const payload = {
         supplierId: selectedSupplierId,
         invoiceNumber: invoiceNumber.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -227,16 +299,26 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
         items: purchaseItems,
         paymentStatus,
         amountPaid: paymentStatus === 'PARTIAL' ? Number(amountPaid) : undefined,
-      })
+      }
+
+      return isEditing && purchase
+        ? updatePurchase(purchase.id, payload)
+        : createPurchase(payload)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchases'] })
       queryClient.invalidateQueries({ queryKey: ['products'] })
-      toast.success('Compra registrada correctamente (stock actualizado)')
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['outstanding-by-supplier'] })
+      toast.success(
+        isEditing
+          ? 'Compra actualizada (inventario y precios ajustados)'
+          : 'Compra registrada correctamente (stock actualizado)',
+      )
       onClose()
     },
     onError: (error: any) => {
-      toast.error(error.message || error.response?.data?.message || 'Error al registrar la compra')
+      toast.error(error.response?.data?.message || error.message || 'Error al guardar la compra')
     },
   })
 
@@ -244,11 +326,19 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-4xl rounded-xl bg-white shadow-xl dark:bg-slate-900 flex flex-col max-h-[90vh]">
+      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-xl bg-white shadow-xl dark:bg-slate-900">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            🛒 Registrar Entrada de Compra / Mercancía
-          </h2>
+          <div>
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
+              {isEditing ? '✏️ Editar Compra' : '🛒 Registrar Entrada de Compra / Mercancía'}
+            </h2>
+            {isEditing && (
+              <p className="mt-0.5 text-xs text-slate-400">
+                Factura {purchase?.invoice_number || 'S/N'} · Al guardar se ajusta el inventario por la
+                diferencia de cantidades
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
@@ -257,11 +347,13 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 grid gap-6 md:grid-cols-[1fr_1.8fr]">
-          {/* Left panel: General purchase info */}
-          <div className="space-y-4 border-r border-slate-200 pr-0 md:pr-6 dark:border-slate-800">
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Datos de Proveedor e Impuestos</h3>
-            
+        <div className="grid flex-1 gap-6 overflow-y-auto p-6 md:grid-cols-[1fr_1.8fr]">
+          {/* Panel izquierdo: datos generales */}
+          <div className="space-y-4 border-slate-200 pr-0 dark:border-slate-800 md:border-r md:pr-6">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              Datos de Proveedor e Impuestos
+            </h3>
+
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
                 Proveedor *
@@ -325,7 +417,7 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
             {paymentStatus === 'PARTIAL' && (
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
-                  Monto abonado ahora
+                  Monto abonado
                 </span>
                 <input
                   type="number"
@@ -354,181 +446,251 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
               />
             </label>
 
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+            <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Subtotal:</span>
                 <span className="font-semibold">{money(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm mt-1">
+              <div className="mt-1 flex justify-between text-sm">
                 <span className="text-slate-500">Impuestos/Otros:</span>
                 <span className="font-semibold">{money(tax)}</span>
               </div>
-              <div className="flex justify-between text-base mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-base dark:border-slate-800">
                 <span className="font-bold text-slate-900 dark:text-white">Total:</span>
                 <span className="font-bold text-blue-600 dark:text-blue-400">{money(total)}</span>
               </div>
             </div>
           </div>
 
-          {/* Right panel: Add products & Table */}
-          <div className="space-y-6 flex flex-col justify-between">
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Buscador y Selección de Productos</h3>
+          {/* Panel derecho: productos */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                Productos de la compra
+              </h3>
+              <button
+                type="button"
+                onClick={() => setProductModalOpen(true)}
+                className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                + Crear producto nuevo
+              </button>
+            </div>
 
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="🔍 Buscar por nombre, SKU o código de barras..."
-                  className="w-full rounded-md border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="🔍 Buscar por nombre, SKU o código de barras..."
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
 
-                {filteredProducts.length > 0 && (
-                  <ul className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg z-10 dark:border-slate-800 dark:bg-slate-900">
-                    {filteredProducts.map((p) => (
-                      <li key={p.id}>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectProduct(p)}
-                          className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-white"
-                        >
-                          <div>
-                            <p className="font-medium">{p.name}</p>
-                            <p className="text-xs text-slate-400">SKU: {p.sku}</p>
-                          </div>
-                          <span className="text-xs font-semibold text-slate-500">
-                            Stock: {p.stock} base
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {/* Selected product detail form */}
-              {selectedProduct && selectedUnit && (
-                <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-800 dark:bg-blue-900/10 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-semibold text-sm text-slate-950 dark:text-white">{selectedProduct.name}</h4>
-                      <p className="text-xs text-slate-400">SKU: {selectedProduct.sku}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedProduct(null)}
-                      className="text-xs text-red-500 hover:underline"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-
-                  <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-                    <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
-                        Presentación
-                      </span>
-                      <select
-                        className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        value={selectedUnit.id || ''}
-                        onChange={(e) => handleUnitChange(e.target.value || null)}
-                      >
-                        {presentationOptions.map((opt) => (
-                          <option key={opt.id || ''} value={opt.id || ''}>
-                            {opt.name} (x{opt.factor})
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
-                        Cantidad
-                      </span>
-                      <input
-                        type="number"
-                        min="1"
-                        className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        value={itemQuantity}
-                        onChange={(e) => setItemQuantity(Number(e.target.value))}
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
-                        Costo Unitario
-                      </span>
-                      <input
-                        type="number"
-                        min="0"
-                        className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        value={itemCost}
-                        onChange={(e) => setItemCost(Number(e.target.value))}
-                      />
-                    </label>
-
-                    <div className="flex items-end">
+              {filteredProducts.length > 0 && (
+                <ul className="absolute left-0 right-0 z-10 mt-1 max-h-60 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+                  {filteredProducts.map((p) => (
+                    <li key={p.id}>
                       <button
                         type="button"
-                        onClick={handleAddItem}
-                        className="w-full rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                        onClick={() => handleSelectProduct(p)}
+                        className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800"
                       >
-                        + Agregar
+                        <div>
+                          <p className="font-medium">{p.name}</p>
+                          <p className="text-xs text-slate-400">SKU: {p.sku}</p>
+                        </div>
+                        <span className="text-xs font-semibold text-slate-500">Stock: {p.stock} base</span>
                       </button>
-                    </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Detalle del producto seleccionado */}
+            {selectedProduct && selectedUnit && (
+              <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-800 dark:bg-blue-900/10">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-950 dark:text-white">
+                      {selectedProduct.name}
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      SKU: {selectedProduct.sku} · Precio actual: {money(selectedUnit.price)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetItemDraft}
+                    className="text-xs text-red-500 hover:underline"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
+                      Presentación
+                    </span>
+                    <select
+                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      value={selectedUnit.id || ''}
+                      onChange={(e) => handleUnitChange(e.target.value || null)}
+                    >
+                      {presentationOptions.map((opt) => (
+                        <option key={opt.id || ''} value={opt.id || ''}>
+                          {opt.name} (x{opt.factor})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
+                      Cantidad
+                    </span>
+                    <input
+                      type="number"
+                      min="1"
+                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      value={itemQuantity}
+                      onChange={(e) => setItemQuantity(Number(e.target.value))}
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
+                      Costo Unitario
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      value={itemCost}
+                      onChange={(e) => setItemCost(Number(e.target.value))}
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
+                      Precio de venta
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Sin cambio"
+                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      value={itemSalePrice}
+                      onChange={(e) => setItemSalePrice(e.target.value)}
+                    />
+                  </label>
+
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      className="w-full rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                    >
+                      + Agregar
+                    </button>
                   </div>
                 </div>
-              )}
-
-              {/* Items Table */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold uppercase">
-                      <th className="p-3">Producto</th>
-                      <th className="p-3">Presentación</th>
-                      <th className="p-3">Cantidad</th>
-                      <th className="p-3">Costo</th>
-                      <th className="p-3">Subtotal</th>
-                      <th className="p-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, index) => (
-                      <tr key={index} className="border-t border-slate-200 dark:border-slate-800">
-                        <td className="p-3">
-                          <p className="font-medium text-slate-900 dark:text-white">{item.product.name}</p>
-                          <p className="text-[10px] text-slate-400">SKU: {item.product.sku}</p>
-                        </td>
-                        <td className="p-3">{item.selectedUnit.name}</td>
-                        <td className="p-3">{item.quantity}</td>
-                        <td className="p-3">{money(item.cost)}</td>
-                        <td className="p-3 font-semibold text-slate-900 dark:text-white">
-                          {money(item.quantity * item.cost)}
-                        </td>
-                        <td className="p-3">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(index)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {items.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-slate-400">
-                          Ningún producto agregado a la orden de compra.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
               </div>
+            )}
+
+            {/* Tabla de ítems (cantidad, costo y precio de venta editables) */}
+            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-100 font-semibold uppercase text-slate-500 dark:bg-slate-800">
+                    <th className="p-3">Producto</th>
+                    <th className="p-3">Presentación</th>
+                    <th className="p-3 w-20">Cantidad</th>
+                    <th className="p-3 w-28">Costo</th>
+                    <th className="p-3 w-28">Precio venta</th>
+                    <th className="p-3">Subtotal</th>
+                    <th className="p-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item, index) => (
+                    <tr key={`${item.productId}-${item.unitId ?? 'base'}`} className="border-t border-slate-200 dark:border-slate-800">
+                      <td className="p-3">
+                        <p className="font-medium text-slate-900 dark:text-white">{item.productName}</p>
+                        {item.productSku && (
+                          <p className="text-[10px] text-slate-400">SKU: {item.productSku}</p>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {item.unitName}
+                        {item.unitFactor > 1 && (
+                          <span className="text-[10px] text-slate-400"> (x{item.unitFactor})</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
+                          className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        />
+                      </td>
+                      <td className="p-3">
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.cost}
+                          onChange={(e) => updateItem(index, { cost: Number(e.target.value) })}
+                          className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        />
+                      </td>
+                      <td className="p-3">
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Sin cambio"
+                          value={item.salePrice}
+                          onChange={(e) => updateItem(index, { salePrice: e.target.value })}
+                          className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        />
+                        {currentPriceOf(item) !== null && (
+                          <span className="mt-0.5 block text-[10px] text-slate-400">
+                            Actual: {money(currentPriceOf(item)!)}
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 font-semibold text-slate-900 dark:text-white">
+                        {money(item.quantity * item.cost)}
+                      </td>
+                      <td className="p-3">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="text-red-500 hover:text-red-700"
+                          title="Quitar de la compra"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {items.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400">
+                        Ningún producto agregado a la orden de compra.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+
+            <p className="text-[11px] text-slate-400">
+              El precio de venta se aplica al producto (o a la presentación) al guardar la compra. Déjalo
+              vacío para no modificarlo.
+            </p>
           </div>
         </div>
 
@@ -546,10 +708,17 @@ export function PurchaseFormModal({ open, onClose }: PurchaseFormModalProps) {
             disabled={saveMutation.isPending || items.length === 0 || !selectedSupplierId}
             className="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
           >
-            {saveMutation.isPending ? 'Procesando...' : 'Registrar Compra'}
+            {saveMutation.isPending
+              ? 'Procesando...'
+              : isEditing
+                ? 'Guardar cambios'
+                : 'Registrar Compra'}
           </button>
         </div>
       </div>
+
+      {/* Se monta al final para quedar por encima del modal de compra */}
+      <ProductFormModal open={productModalOpen} onClose={() => setProductModalOpen(false)} />
     </div>
   )
 }

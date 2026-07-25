@@ -10,6 +10,7 @@ import { listSales, type Sale } from '../../../services/api/sales'
 import { listPurchases } from '../../../services/api/purchases'
 import { listProducts } from '../../../services/api/products'
 import { listStoreStaff } from '../../../services/api/users'
+import { getProfitSummary } from '../../../services/api/dashboard'
 import { useUiStore } from '../../../store/ui-store'
 
 const STORE_ADMIN_ROLE = 'Administrador de Drogueria'
@@ -73,9 +74,18 @@ export function ReportsPage() {
     queryFn: listProducts,
   })
 
+  // Rentabilidad del rango calculada en el backend (usa el costo congelado en
+  // cada línea de venta, no el costo actual del producto)
+  const profitQuery = useQuery({
+    queryKey: ['profit-summary', dateFrom, dateTo],
+    queryFn: () => getProfitSummary(dateFrom, dateTo),
+    enabled: Boolean(dateFrom && dateTo),
+  })
+
   const sales = salesQuery.data ?? []
   const purchases = purchasesQuery.data ?? []
   const products = productsQuery.data ?? []
+  const profit = profitQuery.data
 
   // Calcular totales mensuales reales para Ventas y Compras
   const chartData = (() => {
@@ -138,6 +148,12 @@ export function ReportsPage() {
     if (sales.length > 0) {
       const avgTicket = totalSalesValue / sales.length
       list.push(`Ticket Promedio: El valor promedio de compra de mostrador se sitúa en ${money(avgTicket)} por transacción.`);
+    }
+
+    if (profit) {
+      list.push(
+        `Rentabilidad del periodo (${dateFrom} a ${dateTo}): se vendieron ${money(profit.salesTotal)} con un costo de mercancía de ${money(profit.cogs)}, dejando una utilidad de ${money(profit.profit)}.`,
+      )
     }
 
     return list
@@ -301,6 +317,41 @@ export function ReportsPage() {
             <article className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
               <p className="text-sm text-slate-500 dark:text-slate-400">Ticket promedio</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{money(salesReportStats.avgTicket)}</p>
+            </article>
+          </div>
+
+          {/* Rentabilidad del rango: Utilidad = Ventas - Costo de lo vendido */}
+          <div className="mb-6 grid gap-4 sm:grid-cols-3">
+            <article className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Ventas del periodo</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
+                {money(profit?.salesTotal ?? 0)}
+              </p>
+            </article>
+            <article className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Costo de lo vendido (COGS)</p>
+              <p className="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-400">
+                {money(profit?.cogs ?? 0)}
+              </p>
+            </article>
+            <article className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900 dark:bg-emerald-500/5">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Utilidad (rentabilidad)</p>
+              <p
+                className={`mt-2 text-2xl font-semibold ${
+                  (profit?.profit ?? 0) >= 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-red-600 dark:text-red-400'
+                }`}
+              >
+                {money(profit?.profit ?? 0)}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Margen{' '}
+                {profit && profit.salesTotal > 0
+                  ? ((profit.profit / profit.salesTotal) * 100).toFixed(1)
+                  : '0.0'}
+                %
+              </p>
             </article>
           </div>
 

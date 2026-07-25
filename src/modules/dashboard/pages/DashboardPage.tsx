@@ -4,7 +4,6 @@ import 'chart.js/auto'
 import { StatCard } from '../../../components/ui/StatCard'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { getDashboardSummary } from '../../../services/api/dashboard'
-import { listSales } from '../../../services/api/sales'
 import { useUiStore } from '../../../store/ui-store'
 
 function money(value: number) {
@@ -32,55 +31,22 @@ export function DashboardPage() {
     queryFn: getDashboardSummary,
   })
 
-  const salesQuery = useQuery({
-    queryKey: ['sales'],
-    queryFn: () => listSales(),
-  })
-
   const summary = summaryQuery.data
-  const sales = salesQuery.data ?? []
 
-  // Calcular las ventas de hoy y margen aproximado
-  const salesTodayTotal = sales
-    .filter(s => {
-      const today = new Date().toDateString()
-      const saleDate = new Date(s.created_at).toDateString()
-      return today === saleDate
-    })
-    .reduce((sum, s) => sum + s.total, 0)
+  // Indicadores del día calculados en el backend: ventas, costo de lo vendido
+  // (COGS) y utilidad real. Antes se estimaba en el cliente.
+  const today = summary?.today
+  const salesTodayTotal = today?.salesTotal ?? 0
+  const salesTodayCount = today?.salesCount ?? 0
+  const cogsToday = today?.cogs ?? 0
+  const profitToday = today?.profit ?? 0
+  const marginToday = salesTodayTotal > 0 ? (profitToday / salesTodayTotal) * 100 : 0
 
-  const salesTodayCount = sales
-    .filter(s => {
-      const today = new Date().toDateString()
-      const saleDate = new Date(s.created_at).toDateString()
-      return today === saleDate
-    }).length
-
-  // Datos para el gráfico mensual (acumulado real agrupado por mes)
-  const monthlyData = (() => {
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-    const currentYear = new Date().getFullYear()
-    const monthlySales = Array(12).fill(0)
-    
-    sales.forEach(sale => {
-      const d = new Date(sale.created_at)
-      if (d.getFullYear() === currentYear) {
-        monthlySales[d.getMonth()] += sale.total
-      }
-    })
-
-    // Si todo está vacío, pongamos un par de datos de demostración sobre la base real para que no quede en blanco
-    const hasData = monthlySales.some(v => v > 0)
-    const salesSeries = hasData 
-      ? monthlySales.map((val, idx) => ({ month: months[idx], sales: val / 1000, purchases: (val * 0.7) / 1000 }))
-      : [
-          { month: 'May', sales: 1200, purchases: 800 },
-          { month: 'Jun', sales: 1800, purchases: 1200 },
-          { month: 'Jul', sales: salesTodayTotal > 0 ? (salesTodayTotal / 1000) : 1500, purchases: 1000 },
-        ]
-
-    return salesSeries
-  })()
+  // Serie diaria real de ventas / costo / utilidad (últimos 14 días)
+  const daily = summary?.profitDaily ?? []
+  const dailyLabels = daily.map((d) =>
+    new Date(`${d.day}T12:00:00`).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }),
+  )
 
   return (
     <div className="space-y-6">
@@ -100,11 +66,11 @@ export function DashboardPage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
-              <p className="text-sm text-slate-500 dark:text-slate-400">Ventas de Hoy</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Compras del día</p>
               <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
-                {money(salesTodayTotal)}
+                {money(today?.purchasesTotal ?? 0)}
               </p>
-              <p className="text-xs text-slate-400">{salesTodayCount} tickets emitidos</p>
+              <p className="text-xs text-slate-400">Mercancía ingresada hoy</p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
               <p className="text-sm text-slate-500 dark:text-slate-400">Productos con Bajo Stock</p>
@@ -114,6 +80,41 @@ export function DashboardPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Rentabilidad del día: Utilidad = Ventas - Costo de lo vendido */}
+      <section className="grid gap-4 md:grid-cols-3">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Ventas del día</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
+            {money(salesTodayTotal)}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">{salesTodayCount} ventas registradas hoy</p>
+        </article>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Costo de lo vendido (COGS)</p>
+          <p className="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-400">
+            {money(cogsToday)}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Costo real de los productos que salieron hoy
+          </p>
+        </article>
+        <article className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-5 dark:border-emerald-900 dark:bg-emerald-500/5">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Utilidad del día</p>
+          <p
+            className={`mt-2 text-2xl font-semibold ${
+              profitToday >= 0
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-red-600 dark:text-red-400'
+            }`}
+          >
+            {money(profitToday)}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Ventas − Costo · Margen {marginToday.toFixed(1)}%
+          </p>
+        </article>
       </section>
 
       {/* Stats grid */}
@@ -153,36 +154,66 @@ export function DashboardPage() {
       {/* Main dashboard content */}
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         {/* Trend chart */}
-        <SectionCard title="Tendencia de ventas vs compras (en Miles COP)" description="Evolución en el tiempo">
-          <Line
-            data={{
-              labels: monthlyData.map((item) => item.month),
-              datasets: [
-                {
-                  label: 'Ventas',
-                  data: monthlyData.map((item) => item.sales),
-                  borderColor: '#0ea5e9',
-                  backgroundColor: 'rgba(14, 165, 233, 0.15)',
-                  borderWidth: 3,
-                  tension: 0.35,
+        <SectionCard
+          title="Ventas, costo y utilidad (últimos 14 días)"
+          description="Utilidad = Ventas − Costo de los productos vendidos"
+        >
+          {daily.length === 0 ? (
+            <p className="py-16 text-center text-sm text-slate-400">
+              Aún no hay ventas para calcular la rentabilidad.
+            </p>
+          ) : (
+            <Line
+              data={{
+                labels: dailyLabels,
+                datasets: [
+                  {
+                    label: 'Ventas',
+                    data: daily.map((d) => d.salesTotal),
+                    borderColor: '#0ea5e9',
+                    backgroundColor: 'rgba(14, 165, 233, 0.15)',
+                    borderWidth: 3,
+                    tension: 0.35,
+                  },
+                  {
+                    label: 'Costo (COGS)',
+                    data: daily.map((d) => d.cogs),
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                    borderWidth: 2,
+                    tension: 0.35,
+                  },
+                  {
+                    label: 'Utilidad',
+                    data: daily.map((d) => d.profit),
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.35,
+                  },
+                ],
+              }}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: { position: 'bottom' },
+                  tooltip: {
+                    callbacks: {
+                      label: (ctx) => `${ctx.dataset.label}: ${money(Number(ctx.parsed.y))}`,
+                    },
+                  },
                 },
-                {
-                  label: 'Compras',
-                  data: monthlyData.map((item) => item.purchases),
-                  borderColor: '#94a3b8',
-                  backgroundColor: 'rgba(148, 163, 184, 0.15)',
-                  borderWidth: 3,
-                  tension: 0.35,
+                scales: {
+                  y: {
+                    ticks: {
+                      callback: (value) => money(Number(value)),
+                    },
+                  },
                 },
-              ],
-            }}
-            options={{
-              responsive: true,
-              plugins: {
-                legend: { position: 'bottom' },
-              },
-            }}
-          />
+              }}
+            />
+          )}
         </SectionCard>
 
         {/* Low Stock Alerts */}

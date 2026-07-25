@@ -29,10 +29,11 @@ import {
   XIcon,
 } from '../components/icons'
 
-const SUPER_ADMIN_ROLE = 'Super Administrador'
-const CASHIER_ROLE = 'Cajero'
-const SELLER_ROLE = 'Vendedor'
-const OPERATOR_ROLES = [CASHIER_ROLE, SELLER_ROLE]
+import {
+  OPERATOR_ROLES,
+  SUPER_ADMIN_ROLE,
+  effectivePermissions,
+} from '../shared/utils/permissions'
 
 type NavItem = {
   label: string
@@ -132,17 +133,18 @@ export function AppShell() {
   const baseGroups = isSuperAdmin ? superAdminGroups : isOperator ? cashierGroups : businessGroups
 
   const groups = useMemo(() => {
-    if (isSuperAdmin || !user?.permissions || user.permissions.length === 0) {
+    const permissions = effectivePermissions(user)
+    if (isSuperAdmin || !permissions) {
       return baseGroups
     }
-    const allowedSet = new Set(user.permissions)
+    const allowedSet = new Set(permissions)
     return baseGroups
       .map((group) => ({
         ...group,
         items: group.items.filter((item) => allowedSet.has(item.path)),
       }))
       .filter((group) => group.items.length > 0)
-  }, [baseGroups, isSuperAdmin, user?.permissions])
+  }, [baseGroups, isSuperAdmin, user])
 
   const { data: summary } = useQuery({
     queryKey: ['dashboard-summary'],

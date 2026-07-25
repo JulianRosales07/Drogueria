@@ -10,6 +10,11 @@ import {
 } from '../../../services/api/users'
 import { listStores } from '../../../services/api/stores'
 import { useUiStore } from '../../../store/ui-store'
+import {
+  ALL_PAGES,
+  ADMIN_DEFAULT_PAGES,
+  OPERATOR_DEFAULT_PAGES,
+} from '../../../shared/utils/permissions'
 
 type Props = {
   open: boolean
@@ -23,26 +28,9 @@ const STATUS_OPTIONS = [
   { value: 'DISABLED', label: 'Deshabilitado' },
 ]
 
-const ALL_PAGES = [
-  { key: '/pos', label: 'Punto de venta', icon: '🛒' },
-  { key: '/caja', label: 'Caja', icon: '💵' },
-  { key: '/facturas', label: 'Facturas', icon: '📄' },
-  { key: '/inventario', label: 'Inventario', icon: '📦' },
-  { key: '/clientes', label: 'Clientes', icon: '👤' },
-  { key: '/proveedores', label: 'Proveedores', icon: '🚚' },
-  { key: '/compras', label: 'Compras', icon: '🛍️' },
-  { key: '/contabilidad', label: 'Contabilidad', icon: '📊' },
-  { key: '/reportes', label: 'Reportes', icon: '📈' },
-  { key: '/configuracion', label: 'Configuración', icon: '⚙️' },
-  { key: '/usuarios', label: 'Usuarios', icon: '👥' },
-]
-
 const PHARMACY_ROLES = ['Administrador de Drogueria', 'Cajero']
 const STORE_ROLES = ['Administrador de Tienda', 'Vendedor']
 const SUPER_ADMIN_ROLE_NAME = 'Super Administrador'
-
-const OPERATOR_DEFAULT_PAGES = ['/pos', '/facturas', '/caja', '/reportes', '/configuracion']
-const ADMIN_DEFAULT_PAGES = ALL_PAGES.map((p) => p.key)
 
 export function UserFormModal({ open, user, onClose }: Props) {
   const queryClient = useQueryClient()

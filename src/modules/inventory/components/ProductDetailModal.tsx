@@ -9,9 +9,21 @@ function money(value: number) {
   }).format(value)
 }
 
+/** Utilidad en pesos de una presentación: precio de venta − costo */
+function profit(cost: number, price: number) {
+  return price - cost
+}
+
 function marginPct(cost: number, price: number) {
   if (price <= 0) return 0
   return ((price - cost) / price) * 100
+}
+
+/** Verde si la presentación deja utilidad, rojo si se vende por debajo del costo */
+function profitTone(value: number) {
+  return value >= 0
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : 'text-red-600 dark:text-red-400'
 }
 
 type PresentationRow = {
@@ -56,6 +68,11 @@ export function ProductDetailModal({ open, product, onClose }: ProductDetailModa
       barcode: unit.barcode,
     })),
   ]
+
+  // Utilidad de la unidad base y utilidad que dejaría el stock disponible
+  const unitProfit = profit(product.cost, product.price)
+  const stockProfit = unitProfit * product.stock
+  const stockCost = product.cost * product.stock
 
   const status = product.stock <= product.minStock ? 'Crítico' : 'Disponible'
   const statusTone =
@@ -117,11 +134,47 @@ export function ProductDetailModal({ open, product, onClose }: ProductDetailModa
             </div>
           )}
 
+          {/* Rentabilidad del producto */}
+          <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Rentabilidad</h3>
+            <p className="mt-1 text-xs text-slate-400">
+              Utilidad = precio de venta − costo. Calculada sobre la unidad base del producto.
+            </p>
+
+            <div className="mt-3 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Utilidad por unidad</p>
+                <p className={`mt-1 text-lg font-semibold ${profitTone(unitProfit)}`}>
+                  {money(unitProfit)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  Margen {marginPct(product.cost, product.price).toFixed(1)}% · costo {money(product.cost)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Utilidad potencial del stock</p>
+                <p className={`mt-1 text-lg font-semibold ${profitTone(stockProfit)}`}>
+                  {money(stockProfit)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  Si se vende todo el stock ({product.stock} unidades)
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Inversión en inventario</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
+                  {money(stockCost)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">Costo del stock disponible</p>
+              </div>
+            </div>
+          </div>
+
           {/* Presentaciones y precios */}
           <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Presentaciones y precios</h3>
             <p className="mt-1 text-xs text-slate-400">
-              Costo, precio de venta y margen de cada presentación disponible para este producto.
+              Costo, precio de venta, utilidad y margen de cada presentación disponible.
             </p>
 
             <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
@@ -132,6 +185,7 @@ export function ProductDetailModal({ open, product, onClose }: ProductDetailModa
                     <th className="px-3 py-2 text-left font-medium">Contiene</th>
                     <th className="px-3 py-2 text-right font-medium">Costo</th>
                     <th className="px-3 py-2 text-right font-medium">Precio</th>
+                    <th className="px-3 py-2 text-right font-medium">Utilidad</th>
                     <th className="px-3 py-2 text-right font-medium">Margen</th>
                   </tr>
                 </thead>
@@ -151,7 +205,12 @@ export function ProductDetailModal({ open, product, onClose }: ProductDetailModa
                       <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">
                         {money(row.price)}
                       </td>
-                      <td className="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400">
+                      <td
+                        className={`px-3 py-2 text-right font-semibold ${profitTone(profit(row.cost, row.price))}`}
+                      >
+                        {money(profit(row.cost, row.price))}
+                      </td>
+                      <td className={`px-3 py-2 text-right ${profitTone(profit(row.cost, row.price))}`}>
                         {marginPct(row.cost, row.price).toFixed(0)}%
                       </td>
                     </tr>
