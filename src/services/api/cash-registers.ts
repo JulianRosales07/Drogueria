@@ -25,6 +25,16 @@ export type CurrentCashRegister = CashRegister & {
   salesTotalSoFar: number;
   cashSalesTotalSoFar: number;
   salesCountSoFar: number;
+  /** Costo de lo vendido en el turno. null si no se pudo calcular */
+  cogsTotalSoFar: number | null;
+  /** Utilidad del turno = ventas − costo de lo vendido */
+  profitTotalSoFar: number | null;
+};
+
+/** Turno cerrado, con la rentabilidad calculada del turno */
+export type ClosedCashRegister = CashRegister & {
+  cogsTotal: number | null;
+  profitTotal: number | null;
 };
 
 export async function getCurrentCashRegister(): Promise<CurrentCashRegister | null> {
@@ -49,8 +59,11 @@ export async function openCashRegister(input: { openingAmount: number; note?: st
   return data.data;
 }
 
-export async function closeCashRegister(input: { closingAmount: number; note?: string }): Promise<CashRegister> {
-  const { data } = await apiClient.post<{ success: boolean; data: CashRegister }>(
+export async function closeCashRegister(input: {
+  closingAmount: number;
+  note?: string;
+}): Promise<ClosedCashRegister> {
+  const { data } = await apiClient.post<{ success: boolean; data: ClosedCashRegister }>(
     '/cash-registers/close',
     input,
   );

@@ -10,7 +10,9 @@ import {
   listCashRegisterHistory,
   openCashRegister,
   type CashRegister,
+  type ClosedCashRegister,
 } from '../../../services/api/cash-registers'
+import { CloseShiftSummaryModal } from '../components/CloseShiftSummaryModal'
 
 function money(value: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -36,7 +38,8 @@ export function CashRegisterPage() {
   const [openingNote, setOpeningNote] = useState('')
   const [closingAmount, setClosingAmount] = useState('')
   const [closingNote, setClosingNote] = useState('')
-  const [lastClosed, setLastClosed] = useState<CashRegister | null>(null)
+  const [lastClosed, setLastClosed] = useState<ClosedCashRegister | null>(null)
+  const [summaryOpen, setSummaryOpen] = useState(false)
 
   const currentQuery = useQuery({
     queryKey: ['cash-register-current'],
@@ -67,9 +70,11 @@ export function CashRegisterPage() {
     onSuccess: (register) => {
       queryClient.invalidateQueries({ queryKey: ['cash-register-current'] })
       queryClient.invalidateQueries({ queryKey: ['cash-register-history'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
       setClosingAmount('')
       setClosingNote('')
       setLastClosed(register)
+      setSummaryOpen(true)
       toast.success('Caja cerrada')
     },
     onError: (error: any) => {
@@ -183,7 +188,26 @@ export function CashRegisterPage() {
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
                 <p className="text-sm text-slate-500 dark:text-slate-400">Efectivo esperado</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
-                  {money(current.openingAmount + current.salesTotalSoFar)}
+                  {money(current.openingAmount + current.cashSalesTotalSoFar)}
+                </p>
+                <p className="text-xs text-slate-400">Solo ventas en efectivo</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Costo de lo vendido</p>
+                <p className="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-400">
+                  {current.cogsTotalSoFar !== null ? money(current.cogsTotalSoFar) : '—'}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Utilidad del turno</p>
+                <p
+                  className={`mt-2 text-2xl font-semibold ${
+                    (current.profitTotalSoFar ?? 0) >= 0
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-red-600 dark:text-red-400'
+                  }`}
+                >
+                  {current.profitTotalSoFar !== null ? money(current.profitTotalSoFar) : '—'}
                 </p>
               </div>
             </div>
@@ -258,7 +282,19 @@ export function CashRegisterPage() {
       </SectionCard>
 
       {lastClosed ? (
-        <SectionCard title="Resumen del último cierre" description="Ventas del día registradas en el turno recién cerrado.">
+        <SectionCard
+          title="Resumen del último cierre"
+          description="Ventas, costo y utilidad registrados en el turno recién cerrado."
+          action={
+            <button
+              type="button"
+              onClick={() => setSummaryOpen(true)}
+              className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Ver resumen completo
+            </button>
+          }
+        >
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
               <p className="text-sm text-slate-500 dark:text-slate-400">Ventas del turno</p>
@@ -266,6 +302,24 @@ export function CashRegisterPage() {
                 {money(lastClosed.salesTotal ?? 0)}
               </p>
               <p className="text-xs text-slate-400">{lastClosed.salesCount ?? 0} venta(s)</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Costo de lo vendido</p>
+              <p className="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-400">
+                {lastClosed.cogsTotal !== null ? money(lastClosed.cogsTotal) : '—'}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Utilidad del turno</p>
+              <p
+                className={`mt-2 text-2xl font-semibold ${
+                  (lastClosed.profitTotal ?? 0) >= 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-red-600 dark:text-red-400'
+                }`}
+              >
+                {lastClosed.profitTotal !== null ? money(lastClosed.profitTotal) : '—'}
+              </p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
               <p className="text-sm text-slate-500 dark:text-slate-400">Efectivo esperado</p>
@@ -308,6 +362,12 @@ export function CashRegisterPage() {
           <DataTable data={history} columns={historyColumns} />
         )}
       </SectionCard>
+
+      <CloseShiftSummaryModal
+        open={summaryOpen}
+        register={lastClosed}
+        onClose={() => setSummaryOpen(false)}
+      />
     </div>
   )
 }
