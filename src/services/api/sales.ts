@@ -47,6 +47,8 @@ export type Sale = {
     product_id: string;
     quantity: number;
     unit_price: number;
+    /** Costo unitario (unidad base) congelado al vender. Permite calcular la utilidad de la venta */
+    unit_cost?: number;
     line_total: number;
     unit_label: string;
     unit_factor: number;

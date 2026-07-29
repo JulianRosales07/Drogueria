@@ -4,7 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import toast from 'react-hot-toast'
 import { DataTable } from '../../../components/ui/DataTable'
 import { SectionCard } from '../../../components/ui/SectionCard'
-import { listUsers, deleteUser, type UserRecord } from '../../../services/api/users'
+import { listUsers, deleteUser, updateUser, type UserRecord } from '../../../services/api/users'
 import { UserFormModal } from '../components/UserFormModal'
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -33,6 +33,20 @@ export function UsersPage() {
     return { total, active, blocked }
   }, [users])
 
+  /** Deshabilitar conserva el histórico (turnos de caja, ventas, compras) y quita el acceso */
+  const disableMutation = useMutation({
+    mutationFn: (userId: string) => updateUser(userId, { status: 'DISABLED' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      toast.success('Usuario deshabilitado: ya no podrá iniciar sesión')
+      setDeletingId(null)
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message ?? 'Error al deshabilitar el usuario')
+      setDeletingId(null)
+    },
+  })
+
   const deleteMutation = useMutation({
     mutationFn: deleteUser,
     onSuccess: () => {
@@ -40,8 +54,19 @@ export function UsersPage() {
       toast.success('Usuario eliminado correctamente')
       setDeletingId(null)
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message ?? 'Error al eliminar usuario')
+    onError: (err: any, userId) => {
+      const message = err?.response?.data?.message ?? 'Error al eliminar usuario'
+      const hasHistory = (err?.response?.data?.errors ?? []).some(
+        (e: any) => e?.code === 'USER_HAS_HISTORY',
+      )
+
+      // El usuario tiene operaciones registradas: se ofrece deshabilitarlo
+      if (hasHistory && window.confirm(`${message}\n\n¿Deshabilitarlo ahora?`)) {
+        disableMutation.mutate(userId)
+        return
+      }
+
+      toast.error(message)
       setDeletingId(null)
     },
   })
@@ -50,6 +75,12 @@ export function UsersPage() {
     if (!window.confirm(`¿Estás seguro de que deseas eliminar al usuario "${userEmail}"? Esta acción no se puede deshacer.`)) return
     setDeletingId(userId)
     deleteMutation.mutate(userId)
+  }
+
+  const handleDisable = (userId: string, userEmail: string) => {
+    if (!window.confirm(`¿Deshabilitar a "${userEmail}"? No podrá iniciar sesión, pero se conserva su histórico.`)) return
+    setDeletingId(userId)
+    disableMutation.mutate(userId)
   }
 
   const columns = useMemo<ColumnDef<UserRecord>[]>(
@@ -121,13 +152,26 @@ export function UsersPage() {
             >
               Editar
             </button>
+            {row.original.status !== 'DISABLED' && (
+              <>
+                <span className="text-slate-300 dark:text-slate-600">|</span>
+                <button
+                  onClick={() => handleDisable(row.original.id, row.original.email)}
+                  disabled={deletingId === row.original.id}
+                  className="text-sm font-medium text-amber-600 hover:text-amber-700 disabled:opacity-50 dark:text-amber-400"
+                  title="Quita el acceso sin borrar el histórico"
+                >
+                  Deshabilitar
+                </button>
+              </>
+            )}
             <span className="text-slate-300 dark:text-slate-600">|</span>
             <button
               onClick={() => handleDelete(row.original.id, row.original.email)}
               disabled={deletingId === row.original.id}
               className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50 dark:text-red-400"
             >
-              {deletingId === row.original.id ? 'Eliminando...' : 'Eliminar'}
+              {deletingId === row.original.id ? 'Procesando...' : 'Eliminar'}
             </button>
           </div>
         ),
