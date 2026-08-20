@@ -22,6 +22,7 @@ import {
   MoonIcon,
   ReceiptIcon,
   SearchIcon,
+  SparkleIcon,
   SunIcon,
   TruckIcon,
   UserIcon,
@@ -88,6 +89,7 @@ const businessGroups: NavGroup[] = [
     items: [
       { label: 'Contabilidad', path: '/contabilidad', icon: ChartIcon },
       { label: 'Reportes', path: '/reportes', icon: ChartIcon },
+      { label: 'Suscripción', path: '/suscripcion', icon: SparkleIcon },
       { label: 'Configuración', path: '/configuracion', icon: GearIcon },
     ],
   },

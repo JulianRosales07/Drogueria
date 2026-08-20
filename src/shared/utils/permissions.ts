@@ -25,7 +25,15 @@ export const ALL_PAGES = [
   { key: '/reportes', label: 'Reportes', icon: '📈' },
   { key: '/configuracion', label: 'Configuración', icon: '⚙️' },
   { key: '/usuarios', label: 'Usuarios', icon: '👥' },
+  { key: '/suscripcion', label: 'Suscripción', icon: '✨' },
 ] as const
+
+/**
+ * Páginas que siempre puede ver un rol administrativo, aunque su arreglo de
+ * permisos guardado en base de datos no las incluya (se agregaron después de
+ * que el usuario fue creado).
+ */
+const IMPLICIT_ADMIN_PAGES = ['/dashboard', '/suscripcion']
 
 export const ADMIN_DEFAULT_PAGES = ALL_PAGES.map((p) => p.key as string)
 
@@ -44,21 +52,19 @@ const isOperator = (user: PermissionUser) => Boolean(user?.role && OPERATOR_ROLE
 /**
  * Permisos efectivos de un usuario administrador.
  *
- * El Dashboard no existía en la lista de páginas asignables, así que los
- * usuarios creados antes quedaron con un arreglo de permisos sin `/dashboard`
- * y el guard los expulsaba de su propio panel. Para los roles administrativos
- * el Dashboard se considera siempre permitido; a los roles de operación se les
- * sigue respetando la lista tal cual.
+ * Páginas como el Dashboard o Suscripción no existían en la lista de páginas
+ * asignables, así que los usuarios creados antes quedaron con un arreglo de
+ * permisos sin ellas y el guard los expulsaba. Para los roles administrativos
+ * esas páginas se consideran siempre permitidas; a los roles de operación se
+ * les sigue respetando la lista tal cual.
  */
 export function effectivePermissions(user: PermissionUser): string[] | null {
   const permissions = user?.permissions
   if (!permissions || permissions.length === 0) return null
+  if (isOperator(user)) return permissions
 
-  if (!isOperator(user) && !permissions.includes('/dashboard')) {
-    return ['/dashboard', ...permissions]
-  }
-
-  return permissions
+  const missing = IMPLICIT_ADMIN_PAGES.filter((page) => !permissions.includes(page))
+  return missing.length > 0 ? [...missing, ...permissions] : permissions
 }
 
 /** ¿El usuario puede entrar a esta ruta? */

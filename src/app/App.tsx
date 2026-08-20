@@ -15,6 +15,7 @@ import { SettingsPage } from '../modules/settings/pages/SettingsPage'
 import { UsersPage } from '../modules/users/pages/UsersPage'
 import { StoresPage } from '../modules/stores/pages/StoresPage'
 import { CashRegisterPage } from '../modules/cash-register/pages/CashRegisterPage'
+import { SubscriptionPage } from '../modules/subscription/pages/SubscriptionPage'
 import { useUiStore } from '../store/ui-store'
 import {
   OPERATOR_ALLOWED_PATHS,
@@ -229,6 +230,14 @@ export function App() {
           element={
             <BusinessRoute>
               <SettingsPage />
+            </BusinessRoute>
+          }
+        />
+        <Route
+          path="/suscripcion"
+          element={
+            <BusinessRoute>
+              <SubscriptionPage />
             </BusinessRoute>
           }
         />

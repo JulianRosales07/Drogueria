@@ -5,8 +5,9 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { DataTable } from '../../../components/ui/DataTable'
 import { Receipt } from '../../../components/Receipt'
-import { listSales, type Sale } from '../../../services/api/sales'
+import { listSales, listSaleReturns, type Sale } from '../../../services/api/sales'
 import { useReceiptConfig } from '../../../hooks/useReceiptConfig'
+import { ReturnModal } from '../components/ReturnModal'
 
 function money(value: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -32,6 +33,35 @@ function toDateInputValue(date: Date) {
 
 function invoiceNumber(saleId: string) {
   return `#${saleId.substring(0, 8).toUpperCase()}`
+}
+
+function renderSaleStatus(status: string) {
+  switch (status) {
+    case 'RETURNED':
+      return (
+        <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
+          Devuelta
+        </span>
+      )
+    case 'PARTIAL_RETURN':
+      return (
+        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+          Dev. Parcial
+        </span>
+      )
+    case 'CANCELLED':
+      return (
+        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+          Cancelada
+        </span>
+      )
+    default:
+      return (
+        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+          Completada
+        </span>
+      )
+  }
 }
 
 type RangePreset = 'today' | 'week' | 'month' | 'custom'
@@ -62,6 +92,7 @@ export function InvoicesPage() {
   }
   const [viewingSale, setViewingSale] = useState<Sale | null>(null)
   const [printingSale, setPrintingSale] = useState<Sale | null>(null)
+  const [returningSale, setReturningSale] = useState<Sale | null>(null)
 
   const receiptRef = useRef<HTMLDivElement>(null)
   const receiptConfig = useReceiptConfig()
@@ -69,6 +100,12 @@ export function InvoicesPage() {
   const salesQuery = useQuery({
     queryKey: ['sales'],
     queryFn: () => listSales(),
+  })
+
+  const viewingSaleReturnsQuery = useQuery({
+    queryKey: ['sale-returns', viewingSale?.id],
+    queryFn: () => listSaleReturns(viewingSale!.id),
+    enabled: !!viewingSale?.id,
   })
 
   const sales = salesQuery.data ?? []
@@ -146,6 +183,11 @@ export function InvoicesPage() {
         cell: ({ row }) => row.original.users?.full_name || '—',
       },
       {
+        header: 'Estado',
+        accessorKey: 'status',
+        cell: ({ row }) => renderSaleStatus(row.original.status),
+      },
+      {
         header: 'Ítems',
         id: 'items',
         cell: ({ row }) => row.original.sale_items.reduce((sum, item) => sum + item.unit_quantity, 0),
@@ -160,32 +202,48 @@ export function InvoicesPage() {
       {
         header: '',
         id: 'actions',
-        cell: ({ row }) => (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setViewingSale(row.original)
-              }}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
-            >
-              Ver detalle
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handleReprint(row.original)
-              }}
-              className="text-sm font-medium text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white"
-            >
-              🖨️ Reimprimir
-            </button>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const canReturn = row.original.status !== 'RETURNED' && row.original.status !== 'CANCELLED'
+          return (
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setViewingSale(row.original)
+                }}
+                className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              >
+                Ver detalle
+              </button>
+              {canReturn && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setReturningSale(row.original)
+                  }}
+                  className="text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 flex items-center gap-0.5"
+                  title="Devolver productos de esta factura"
+                >
+                  🔄 Devolver
+                </button>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleReprint(row.original)
+                }}
+                className="text-xs font-medium text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white"
+              >
+                🖨️
+              </button>
+            </div>
+          )
+        },
       },
     ],
     [],
   )
+
 
   return (
     <div className="space-y-6">
@@ -293,11 +351,14 @@ export function InvoicesPage() {
       {/* ===== Modal de detalle de factura ===== */}
       {viewingSale && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+          <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
             <div className="mb-1 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Factura {invoiceNumber(viewingSale.id)}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Factura {invoiceNumber(viewingSale.id)}
+                </h2>
+                {renderSaleStatus(viewingSale.status)}
+              </div>
               <button
                 onClick={() => setViewingSale(null)}
                 className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
@@ -312,40 +373,77 @@ export function InvoicesPage() {
               {viewingSale.users?.full_name ? ` · Atendió: ${viewingSale.users.full_name}` : ''}
             </p>
 
-            <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium">Producto</th>
-                    <th className="px-3 py-2 text-center font-medium">Cant.</th>
-                    <th className="px-3 py-2 text-right font-medium">Precio</th>
-                    <th className="px-3 py-2 text-right font-medium">Importe</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {viewingSale.sale_items.map((item) => (
-                    <tr key={item.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
-                      <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
-                        {item.products.name}
-                        {item.unit_label !== 'Unidad' && (
-                          <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
-                            {item.unit_label}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-center text-slate-500 dark:text-slate-400">
-                        {item.unit_quantity}
-                      </td>
-                      <td className="px-3 py-2 text-right text-slate-500 dark:text-slate-400">
-                        {money(item.unit_price)}
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">
-                        {money(item.line_total)}
-                      </td>
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">Producto</th>
+                      <th className="px-3 py-2 text-center font-medium">Cant.</th>
+                      <th className="px-3 py-2 text-right font-medium">Precio</th>
+                      <th className="px-3 py-2 text-right font-medium">Importe</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {viewingSale.sale_items.map((item) => (
+                      <tr key={item.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+                        <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                          {item.products.name}
+                          {item.unit_label !== 'Unidad' && (
+                            <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+                              {item.unit_label}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-center text-slate-500 dark:text-slate-400">
+                          {item.unit_quantity}
+                        </td>
+                        <td className="px-3 py-2 text-right text-slate-500 dark:text-slate-400">
+                          {money(item.unit_price)}
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">
+                          {money(item.line_total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Historial de Devoluciones registradas para esta factura */}
+              {viewingSaleReturnsQuery.data && viewingSaleReturnsQuery.data.length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3.5 dark:border-amber-900/50 dark:bg-amber-950/20">
+                  <p className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300 mb-2 flex items-center gap-1.5">
+                    <span>🔄</span> Historial de Devoluciones
+                  </p>
+                  <div className="space-y-2.5">
+                    {viewingSaleReturnsQuery.data.map((ret) => (
+                      <div
+                        key={ret.id}
+                        className="rounded-lg bg-white p-2.5 shadow-sm text-xs dark:bg-slate-800 border border-amber-100 dark:border-slate-700"
+                      >
+                        <div className="flex justify-between items-start font-medium text-slate-800 dark:text-slate-200">
+                          <span>{formatDateTime(ret.created_at)}</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                            Reembolso: {money(ret.total_refund)}
+                          </span>
+                        </div>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1 italic">
+                          "{ret.notes}"
+                        </p>
+                        <ul className="mt-1.5 space-y-0.5 text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-700/50 pt-1">
+                          {ret.sale_return_items.map((item) => (
+                            <li key={item.id} className="flex justify-between">
+                              <span>• {item.products?.name || 'Producto'}</span>
+                              <span className="font-semibold">{item.unit_quantity} devueltos</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-4 space-y-1 border-t border-slate-200 pt-3 text-sm dark:border-slate-800">
@@ -365,7 +463,19 @@ export function InvoicesPage() {
               </div>
             </div>
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
+              {viewingSale.status !== 'RETURNED' && viewingSale.status !== 'CANCELLED' && (
+                <button
+                  onClick={() => {
+                    const target = viewingSale
+                    setViewingSale(null)
+                    setReturningSale(target)
+                  }}
+                  className="flex-1 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700"
+                >
+                  🔄 Devolver productos
+                </button>
+              )}
               <button
                 onClick={() => handleReprint(viewingSale)}
                 className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
@@ -374,7 +484,7 @@ export function InvoicesPage() {
               </button>
               <button
                 onClick={() => setViewingSale(null)}
-                className="flex-1 rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 Cerrar
               </button>
@@ -383,10 +493,15 @@ export function InvoicesPage() {
         </div>
       )}
 
-      {/* ===== Recibo usado solo para reimpresión =====
-          No se usa display:none (className="hidden") porque los navegadores no
-          imprimen elementos con display:none aunque el CSS @media print diga
-          visibility:visible. Se posiciona fuera de pantalla en su lugar. */}
+      {/* ===== Modal de procesamiento de devolución ===== */}
+      {returningSale && (
+        <ReturnModal
+          sale={returningSale}
+          onClose={() => setReturningSale(null)}
+        />
+      )}
+
+      {/* ===== Recibo usado solo para reimpresión ===== */}
       {printingSale && (
         <div className="fixed left-[-9999px] top-0">
           <Receipt
@@ -411,3 +526,4 @@ export function InvoicesPage() {
     </div>
   )
 }
+
