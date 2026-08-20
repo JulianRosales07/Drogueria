@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import { type ReceiptConfig, RECEIPT_CONFIG_DEFAULTS, getPaddingH, getPaddingV } from '../hooks/useReceiptConfig';
+import { PAYMENT_METHOD_LABELS, type PaymentMethod } from '../services/api/sales';
 
 type ReceiptProps = {
   saleId: string;
@@ -15,6 +16,10 @@ type ReceiptProps = {
   tax: number;
   discount: number;
   total: number;
+  paymentMethod?: PaymentMethod | string;
+  paymentMethod2?: PaymentMethod | string | null;
+  amountPaid1?: number | null;
+  amountPaid2?: number | null;
   /** Optional: receipt layout config from settings. Falls back to defaults. */
   config?: Partial<ReceiptConfig>;
 };
@@ -158,6 +163,27 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
             <span>TOTAL:</span>
             <span>{formatMoney(total)}</span>
           </div>
+
+          {/* ── Forma de Pago ── */}
+          {paymentMethod2 ? (
+            <div style={{ borderTop: borderLight, marginTop: '4px', paddingTop: '3px', fontSize: '0.9em' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Pago 1 ({PAYMENT_METHOD_LABELS[paymentMethod as PaymentMethod] || paymentMethod || 'Efectivo'}):</span>
+                <span>{formatMoney(amountPaid1 ?? total)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Pago 2 ({PAYMENT_METHOD_LABELS[paymentMethod2 as PaymentMethod] || paymentMethod2}):</span>
+                <span>{formatMoney(amountPaid2 ?? 0)}</span>
+              </div>
+            </div>
+          ) : paymentMethod ? (
+            <div style={{ borderTop: borderLight, marginTop: '4px', paddingTop: '3px', fontSize: '0.9em' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Medio de pago:</span>
+                <span>{PAYMENT_METHOD_LABELS[paymentMethod as PaymentMethod] || paymentMethod}</span>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* ── Footer ── */}

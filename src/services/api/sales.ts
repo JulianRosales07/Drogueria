@@ -25,6 +25,9 @@ export type CreateSaleInput = {
   tax?: number;
   discount?: number;
   paymentMethod?: PaymentMethod;
+  paymentMethod2?: PaymentMethod | null;
+  amountPaid1?: number | null;
+  amountPaid2?: number | null;
   items: SaleItem[];
 };
 
@@ -39,6 +42,9 @@ export type Sale = {
   total: number;
   status: string;
   payment_method: PaymentMethod;
+  payment_method_2?: PaymentMethod | null;
+  amount_paid_1?: number | null;
+  amount_paid_2?: number | null;
   created_at: string;
   customers?: { full_name: string } | null;
   users?: { full_name: string } | null;

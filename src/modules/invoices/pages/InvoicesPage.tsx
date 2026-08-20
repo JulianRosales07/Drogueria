@@ -5,7 +5,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { DataTable } from '../../../components/ui/DataTable'
 import { Receipt } from '../../../components/Receipt'
-import { listSales, listSaleReturns, type Sale } from '../../../services/api/sales'
+import { listSales, listSaleReturns, PAYMENT_METHOD_LABELS, type Sale } from '../../../services/api/sales'
 import { useReceiptConfig } from '../../../hooks/useReceiptConfig'
 import { ReturnModal } from '../components/ReturnModal'
 
@@ -181,6 +181,30 @@ export function InvoicesPage() {
         header: 'Cajero',
         id: 'cashier',
         cell: ({ row }) => row.original.users?.full_name || '—',
+      },
+      {
+        header: 'Medio de pago',
+        id: 'payment_method',
+        cell: ({ row }) => {
+          const s = row.original
+          if (s.payment_method_2) {
+            return (
+              <div className="text-xs">
+                <span className="font-medium text-slate-900 dark:text-white">
+                  {PAYMENT_METHOD_LABELS[s.payment_method]} + {PAYMENT_METHOD_LABELS[s.payment_method_2]}
+                </span>
+                <p className="text-[10px] text-slate-400">
+                  {money(s.amount_paid_1 || 0)} / {money(s.amount_paid_2 || 0)}
+                </p>
+              </div>
+            )
+          }
+          return (
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              {PAYMENT_METHOD_LABELS[s.payment_method] || s.payment_method}
+            </span>
+          )
+        },
       },
       {
         header: 'Estado',
@@ -461,6 +485,21 @@ export function InvoicesPage() {
                 <span>Total</span>
                 <span>{money(viewingSale.total)}</span>
               </div>
+              <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 pt-1">
+                <span>Medio de pago</span>
+                <span>
+                  {viewingSale.payment_method_2 ? (
+                    <span className="font-medium text-slate-800 dark:text-slate-200">
+                      {PAYMENT_METHOD_LABELS[viewingSale.payment_method]} ({money(viewingSale.amount_paid_1 || 0)}) +{' '}
+                      {PAYMENT_METHOD_LABELS[viewingSale.payment_method_2]} ({money(viewingSale.amount_paid_2 || 0)})
+                    </span>
+                  ) : (
+                    <span className="font-medium text-slate-800 dark:text-slate-200">
+                      {PAYMENT_METHOD_LABELS[viewingSale.payment_method] || viewingSale.payment_method}
+                    </span>
+                  )}
+                </span>
+              </div>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
@@ -509,6 +548,10 @@ export function InvoicesPage() {
             saleId={printingSale.id}
             date={printingSale.created_at}
             customerName={printingSale.customers?.full_name}
+            paymentMethod={printingSale.payment_method}
+            paymentMethod2={printingSale.payment_method_2}
+            amountPaid1={printingSale.amount_paid_1}
+            amountPaid2={printingSale.amount_paid_2}
             items={printingSale.sale_items.map((item) => ({
               name: `${item.products.name}${item.unit_label !== 'Unidad' ? ` (${item.unit_label})` : ''}`,
               quantity: item.unit_quantity,

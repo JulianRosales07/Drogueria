@@ -88,10 +88,22 @@ export function AccountingPage() {
       map.set(method, { count: 0, total: 0 })
     }
     for (const sale of filteredSales) {
-      const entry = map.get(sale.payment_method) ?? { count: 0, total: 0 }
-      entry.count += 1
-      entry.total += sale.total
-      map.set(sale.payment_method, entry)
+      if (sale.payment_method_2) {
+        const entry1 = map.get(sale.payment_method) ?? { count: 0, total: 0 }
+        entry1.count += 1
+        entry1.total += Number(sale.amount_paid_1 ?? (sale.total - (sale.amount_paid_2 || 0)))
+        map.set(sale.payment_method, entry1)
+
+        const entry2 = map.get(sale.payment_method_2) ?? { count: 0, total: 0 }
+        entry2.count += 1
+        entry2.total += Number(sale.amount_paid_2 ?? 0)
+        map.set(sale.payment_method_2, entry2)
+      } else {
+        const entry = map.get(sale.payment_method) ?? { count: 0, total: 0 }
+        entry.count += 1
+        entry.total += sale.total
+        map.set(sale.payment_method, entry)
+      }
     }
     return map
   }, [filteredSales])

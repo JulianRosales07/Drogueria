@@ -123,6 +123,11 @@ export function PosPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
+  const [isSplitPayment, setIsSplitPayment] = useState(false)
+  const [paymentMethod2, setPaymentMethod2] = useState<PaymentMethod>('TRANSFER')
+  const [splitAmount1, setSplitAmount1] = useState('')
+  const [splitAmount2, setSplitAmount2] = useState('')
+  const [cashReceived, setCashReceived] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false)
@@ -145,6 +150,11 @@ export function PosPage() {
       setSearchQuery('')
       setPaymentAmount('')
       setPaymentMethod('CASH')
+      setIsSplitPayment(false)
+      setPaymentMethod2('TRANSFER')
+      setSplitAmount1('')
+      setSplitAmount2('')
+      setCashReceived('')
       setCustomerName('')
       setSelectedCustomerId(null)
       setTicketNumber((n) => n + 1)
@@ -367,6 +377,11 @@ export function PosPage() {
       setSearchQuery('')
       setPaymentAmount('')
       setPaymentMethod('CASH')
+      setIsSplitPayment(false)
+      setPaymentMethod2('TRANSFER')
+      setSplitAmount1('')
+      setSplitAmount2('')
+      setCashReceived('')
       setCustomerName('')
       setSelectedCustomerId(null)
       searchInputRef.current?.focus()
@@ -379,8 +394,24 @@ export function PosPage() {
   const discount = 0
   const total = subtotal + tax - discount
 
-  const paidAmount = paymentAmount.trim() === '' ? total : parseFloat(paymentAmount) || 0
-  const change = paidAmount - total
+  // Cálculos de pago único vs pago mixto
+  const singlePaidAmount = paymentAmount.trim() === '' ? total : parseFloat(paymentAmount) || 0
+
+  const parsedSplit1 = parseFloat(splitAmount1) || 0
+  const parsedSplit2 = parseFloat(splitAmount2) || 0
+  const splitTotal = parsedSplit1 + parsedSplit2
+
+  // Calcular porción de efectivo si aplica en pago mixto
+  const hasCashInSplit = isSplitPayment && (paymentMethod === 'CASH' || paymentMethod2 === 'CASH')
+  const cashAmountInSplit = isSplitPayment
+    ? (paymentMethod === 'CASH' ? parsedSplit1 : 0) + (paymentMethod2 === 'CASH' ? parsedSplit2 : 0)
+    : 0
+
+  const cashReceivedAmount = cashReceived.trim() === '' ? cashAmountInSplit : parseFloat(cashReceived) || 0
+
+  const change = isSplitPayment
+    ? (hasCashInSplit ? cashReceivedAmount - cashAmountInSplit : 0)
+    : (paymentMethod === 'CASH' ? singlePaidAmount - total : 0)
 
   const focusPayment = () => {
     if (!isRegisterOpen) {
@@ -404,10 +435,51 @@ export function PosPage() {
       toast.error('El carrito está vacío')
       return
     }
-    if (paidAmount < total) {
+
+    if (isSplitPayment) {
+      if (parsedSplit1 <= 0 || parsedSplit2 <= 0) {
+        toast.error('Ingresa ambos montos para el pago mixto')
+        return
+      }
+      if (Math.round(splitTotal) !== Math.round(total)) {
+        toast.error(`La suma de los dos pagos (${money(splitTotal)}) debe ser igual al total (${money(total)})`)
+        return
+      }
+      if (paymentMethod === paymentMethod2) {
+        toast.error('Selecciona dos medios de pago diferentes')
+        return
+      }
+      if (hasCashInSplit && cashReceivedAmount < cashAmountInSplit) {
+        toast.error('El efectivo recibido es menor a la porción requerida en efectivo')
+        return
+      }
+
+      createSaleMutation.mutate({
+        customerId: selectedCustomerId ?? undefined,
+        customerName: !selectedCustomerId ? customerName.trim() || undefined : undefined,
+        paymentMethod,
+        paymentMethod2,
+        amountPaid1: parsedSplit1,
+        amountPaid2: parsedSplit2,
+        items: cart.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.price,
+          unitFactor: item.unitFactor,
+          unitLabel: item.unitLabel,
+          productUnitId: item.productUnitId ?? undefined,
+        })),
+        tax,
+        discount,
+      })
+      return
+    }
+
+    if (paymentMethod === 'CASH' && singlePaidAmount < total) {
       toast.error('Monto insuficiente')
       return
     }
+
     createSaleMutation.mutate({
       customerId: selectedCustomerId ?? undefined,
       customerName: !selectedCustomerId ? customerName.trim() || undefined : undefined,
@@ -705,59 +777,206 @@ export function PosPage() {
             )}
           </div>
 
-          <div className="mb-3 flex items-center gap-2">
-            <span className="shrink-0 text-xs font-medium text-slate-400">Método de pago</span>
-            <div className="flex gap-1.5">
-              {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((method) => (
-                <button
-                  key={method}
-                  type="button"
-                  onClick={() => setPaymentMethod(method)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                    paymentMethod === method
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  {PAYMENT_METHOD_LABELS[method]}
-                </button>
-              ))}
+          {/* Header de Método de Pago y Selector de Pago Mixto */}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 text-xs font-medium text-slate-400">
+                {isSplitPayment ? 'Pago mixto (2 medios)' : 'Método de pago'}
+              </span>
+              {!isSplitPayment && (
+                <div className="flex gap-1.5">
+                  {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => setPaymentMethod(method)}
+                      className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                        paymentMethod === method
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {PAYMENT_METHOD_LABELS[method]}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const next = !isSplitPayment
+                setIsSplitPayment(next)
+                if (next) {
+                  setPaymentMethod('TRANSFER')
+                  setPaymentMethod2('CASH')
+                  setSplitAmount1('')
+                  setSplitAmount2('')
+                  setCashReceived('')
+                } else {
+                  setPaymentMethod('CASH')
+                }
+              }}
+              className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition border ${
+                isSplitPayment
+                  ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+              }`}
+            >
+              {isSplitPayment ? '↺ Pago único' : '💳 2 medios de pago'}
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div>
-              <p className="text-xs font-medium text-slate-400">Total</p>
-              <p className="text-2xl font-semibold text-slate-900 dark:text-white">{money(total)}</p>
+          {isSplitPayment ? (
+            <div className="space-y-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3 dark:border-blue-900/40 dark:bg-blue-950/20">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* Medio 1 */}
+                <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Medio 1</span>
+                    <select
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                      className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-800 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+                    >
+                      {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
+                        <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-400">$</span>
+                    <input
+                      type="number"
+                      value={splitAmount1}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setSplitAmount1(val)
+                        const n = parseFloat(val) || 0
+                        if (n <= total && total > 0) {
+                          setSplitAmount2(String(Math.max(0, total - n)))
+                        }
+                      }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleConfirmPayment()}
+                      placeholder="Monto 1"
+                      className="w-full bg-transparent text-lg font-semibold text-slate-900 focus:outline-none dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Medio 2 */}
+                <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Medio 2</span>
+                    <select
+                      value={paymentMethod2}
+                      onChange={(e) => setPaymentMethod2(e.target.value as PaymentMethod)}
+                      className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-800 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+                    >
+                      {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
+                        <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-400">$</span>
+                    <input
+                      type="number"
+                      value={splitAmount2}
+                      onChange={(e) => setSplitAmount2(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleConfirmPayment()}
+                      placeholder="Monto 2"
+                      className="w-full bg-transparent text-lg font-semibold text-slate-900 focus:outline-none dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Fila inferior: Efectivo recibido (si aplica), Total y botón Cobrar */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 items-end pt-1">
+                <div>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total venta</p>
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{money(total)}</p>
+                </div>
+
+                {hasCashInSplit ? (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        Efectivo recibido
+                      </label>
+                      <input
+                        type="number"
+                        value={cashReceived}
+                        onChange={(e) => setCashReceived(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleConfirmPayment()}
+                        placeholder={String(cashAmountInSplit)}
+                        className="w-full border-b border-slate-300 bg-transparent text-lg font-semibold text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Cambio (efectivo)</p>
+                      <p className={`text-lg font-semibold ${change < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                        {money(change < 0 ? change : Math.max(change, 0))}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="col-span-2">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Suma de pagos</p>
+                    <p className={`text-lg font-semibold ${Math.round(splitTotal) === Math.round(total) && splitTotal > 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {money(splitTotal)} {Math.round(splitTotal) !== Math.round(total) && `(Faltan ${money(total - splitTotal)})`}
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end">
+                  <button
+                    onClick={handleConfirmPayment}
+                    disabled={!isRegisterOpen || cart.length === 0 || createSaleMutation.isPending}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 text-base font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Cobrar <span className="text-xs font-normal opacity-80">F9</span>
+                  </button>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-slate-400">Pagó con</label>
-              <input
-                ref={paymentInputRef}
-                type="number"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleConfirmPayment()}
-                placeholder={total > 0 ? String(total) : '0'}
-                className="w-full border-b-2 border-slate-200 bg-transparent text-2xl font-semibold text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:text-white"
-              />
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div>
+                <p className="text-xs font-medium text-slate-400">Total</p>
+                <p className="text-2xl font-semibold text-slate-900 dark:text-white">{money(total)}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-400">Pagó con</label>
+                <input
+                  ref={paymentInputRef}
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleConfirmPayment()}
+                  placeholder={total > 0 ? String(total) : '0'}
+                  className="w-full border-b-2 border-slate-200 bg-transparent text-2xl font-semibold text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-400">Cambio</p>
+                <p className={`text-2xl font-semibold ${change < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                  {money(change < 0 ? change : Math.max(change, 0))}
+                </p>
+              </div>
+              <div className="flex items-center justify-end">
+                <button
+                  onClick={handleConfirmPayment}
+                  disabled={!isRegisterOpen || cart.length === 0 || createSaleMutation.isPending}
+                  className="flex h-full min-h-14 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 text-lg font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:min-w-40"
+                >
+                  Cobrar <span className="text-sm font-normal opacity-80">F9</span>
+                </button>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400">Cambio</p>
-              <p className={`text-2xl font-semibold ${change < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                {money(change < 0 ? change : Math.max(change, 0))}
-              </p>
-            </div>
-            <div className="flex items-center justify-end">
-              <button
-                onClick={handleConfirmPayment}
-                disabled={!isRegisterOpen || cart.length === 0 || createSaleMutation.isPending}
-                className="flex h-full min-h-14 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 text-lg font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:min-w-40"
-              >
-                Cobrar <span className="text-sm font-normal opacity-80">F9</span>
-              </button>
-            </div>
-          </div>
+          )}
 
           <label className="mt-2 flex items-center gap-2 text-xs text-slate-400">
             <input
@@ -1050,6 +1269,21 @@ export function PosPage() {
                 <span>Total</span>
                 <span>{money(viewingSale.total)}</span>
               </div>
+              <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 pt-1">
+                <span>Medio de pago</span>
+                <span>
+                  {viewingSale.payment_method_2 ? (
+                    <span className="font-medium text-slate-800 dark:text-slate-200">
+                      {PAYMENT_METHOD_LABELS[viewingSale.payment_method]} ({money(viewingSale.amount_paid_1 || 0)}) +{' '}
+                      {PAYMENT_METHOD_LABELS[viewingSale.payment_method_2]} ({money(viewingSale.amount_paid_2 || 0)})
+                    </span>
+                  ) : (
+                    <span className="font-medium text-slate-800 dark:text-slate-200">
+                      {PAYMENT_METHOD_LABELS[viewingSale.payment_method] || viewingSale.payment_method}
+                    </span>
+                  )}
+                </span>
+              </div>
             </div>
 
             <button
@@ -1138,6 +1372,10 @@ export function PosPage() {
                   undefined
                 }
                 config={receiptConfig}
+                paymentMethod={completedSale.payment_method}
+                paymentMethod2={completedSale.payment_method_2}
+                amountPaid1={completedSale.amount_paid_1}
+                amountPaid2={completedSale.amount_paid_2}
                 items={completedSale.sale_items.map((item) => ({
                   name:
                     item.unit_label && item.unit_label !== 'Unidad'
