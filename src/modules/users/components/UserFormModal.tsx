@@ -86,6 +86,8 @@ export function UserFormModal({ open, user, onClose }: Props) {
   }, [roles, isCurrentUserSuperAdmin, selectedStoreType, currentUser?.storeType])
 
   useEffect(() => {
+    if (!open) return
+
     if (user) {
       setForm({
         email: user.email,
@@ -99,19 +101,18 @@ export function UserFormModal({ open, user, onClose }: Props) {
       setPermissions(user.permissions ?? OPERATOR_DEFAULT_PAGES)
     } else {
       const defaultStoreId = isCurrentUserSuperAdmin ? '' : (currentUser?.storeId || '')
-      const defaultRole = filteredRoles[0]?.id ?? ''
       setForm({
         email: '',
         username: '',
         fullName: '',
         password: '',
-        roleId: defaultRole,
+        roleId: '',
         storeId: defaultStoreId,
         status: 'ACTIVE',
       })
       setPermissions(OPERATOR_DEFAULT_PAGES)
     }
-  }, [user, roles, open, isCurrentUserSuperAdmin, currentUser, filteredRoles])
+  }, [user, open, isCurrentUserSuperAdmin, currentUser?.storeId])
 
   const createMutation = useMutation({
     mutationFn: (input: CreateUserInput & { storeId?: string | null }) => createUser(input),
