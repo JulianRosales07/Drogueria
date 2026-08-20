@@ -45,7 +45,7 @@ const BORDER_LIGHT_MAP: Record<string, string> = {
 }
 
 export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
-  ({ saleId, date, customerName, items, subtotal, tax, discount, total, config }, ref) => {
+  ({ saleId, date, customerName, items, subtotal, tax, discount, total, config, paymentMethod, paymentMethod2, amountPaid1, amountPaid2 }, ref) => {
     const cfg: ReceiptConfig = { ...RECEIPT_CONFIG_DEFAULTS, ...config };
 
     const fontSize = FONT_SIZE_MAP[cfg.fontSize] ?? '12px';
