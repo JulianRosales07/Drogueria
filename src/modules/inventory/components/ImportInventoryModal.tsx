@@ -56,6 +56,7 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
   const handleConfirmImport = async () => {
     if (!parseResult || parseResult.rows.length === 0) return
 
+    setProgress({ done: 0, total: parseResult.rows.length })
     setStep('importing')
     const result = await importInventoryRows(parseResult.rows, (done, total) =>
       setProgress({ done, total }),
@@ -196,11 +197,24 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
           )}
 
           {step === 'importing' && (
-            <div className="flex flex-col items-center justify-center gap-3 py-10">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
-              <p className="text-sm text-slate-500">
-                Importando {progress.done} de {progress.total}…
-              </p>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+              <div className="w-full max-w-xs space-y-2 text-center">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Importando {progress.done} de {progress.total} productos...
+                </p>
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                  <div
+                    className="h-full bg-blue-600 transition-all duration-200"
+                    style={{
+                      width: `${progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-slate-400">
+                  {progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0}% completado
+                </p>
+              </div>
             </div>
           )}
 

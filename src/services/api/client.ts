@@ -10,7 +10,7 @@ const normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, '')
 
 export const apiClient = axios.create({
   baseURL: normalizedBaseUrl,
-  timeout: 8000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
     'X-App-Client': 'drogueria-web',
