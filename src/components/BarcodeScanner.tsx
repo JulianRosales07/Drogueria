@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BrowserMultiFormatReader } from '@zxing/browser'
+import { BrowserMultiFormatReader, type IScannerControls } from '@zxing/browser'
 import { NotFoundException } from '@zxing/library'
 
 type Props = {
@@ -10,120 +10,145 @@ type Props = {
 export function BarcodeScanner({ onDetected, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const activeRef = useRef(true)
-  const readerRef = useRef(new BrowserMultiFormatReader())
+  const controlsRef = useRef<IScannerControls | null>(null)
 
   const [error, setError] = useState<string | null>(null)
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
   const [selectedCamera, setSelectedCamera] = useState<string | undefined>(undefined)
 
-  // 1. Cargar lista de cámaras al montar
+  // 1. Obtener lista de cámaras
   useEffect(() => {
-    // Primero pedir permiso para que los labels aparezcan
-    navigator.mediaDevices
-      .getUserMedia({ video: true })
-      .then((tempStream) => {
-        tempStream.getTracks().forEach((t) => t.stop())
-        return navigator.mediaDevices.enumerateDevices()
-      })
-      .then((devices) => {
+    let mounted = true
+
+    async function initCameras() {
+      try {
+        // Pedir permiso inicial para desbloquear las etiquetas de los dispositivos
+        const initialStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+        })
+        // Cerrar stream inicial inmediatamente
+        initialStream.getTracks().forEach((t) => t.stop())
+
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        if (!mounted) return
+
         const videoDevices = devices.filter((d) => d.kind === 'videoinput')
         setCameras(videoDevices)
-        // Preferir cámara trasera (environment / back / rear)
+
+        // Seleccionar cámara trasera por defecto
         const back = videoDevices.find((d) =>
           /back|rear|environment|trasera/i.test(d.label),
         )
         setSelectedCamera(back?.deviceId ?? videoDevices[0]?.deviceId)
-      })
-      .catch((e) => {
-        if (e?.name === 'NotAllowedError') {
-          setError('Permiso de cámara denegado. Habilítalo en la configuración del navegador.')
+      } catch (e: any) {
+        if (!mounted) return
+        if (e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError') {
+          setError('Permiso de cámara denegado. Permite el acceso a la cámara en tu navegador.')
         } else {
-          setError('No se encontraron cámaras disponibles.')
+          setError('No se pudo acceder a la cámara en este dispositivo.')
         }
-      })
+      }
+    }
+
+    initCameras()
 
     return () => {
-      activeRef.current = false
+      mounted = false
     }
   }, [])
 
-  // 2. Iniciar stream y loop de escaneo cuando se conoce la cámara
+  // 2. Iniciar el stream de video y el lector de códigos de barras
   useEffect(() => {
-    if (!selectedCamera) return
+    let isCancelled = false
 
-    activeRef.current = true
-    let timeoutId: ReturnType<typeof setTimeout>
+    async function startScanning() {
+      // Limpiar stream y controles anteriores
+      if (controlsRef.current) {
+        controlsRef.current.stop()
+        controlsRef.current = null
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+      }
 
-    const stopStream = () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop())
-      streamRef.current = null
-    }
-
-    const startStream = async () => {
-      stopStream()
+      const video = videoRef.current
+      if (!video) return
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            deviceId: { exact: selectedCamera },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-        })
+        const constraints: MediaStreamConstraints = {
+          video: selectedCamera
+            ? { deviceId: { exact: selectedCamera } }
+            : { facingMode: { ideal: 'environment' } },
+          audio: false,
+        }
 
-        if (!activeRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints)
+        if (isCancelled) {
           stream.getTracks().forEach((t) => t.stop())
           return
         }
 
         streamRef.current = stream
-        const video = videoRef.current
-        if (!video) return
-
         video.srcObject = stream
         video.setAttribute('playsinline', 'true')
         video.muted = true
-        await video.play()
 
-        // Loop de escaneo: intenta decodificar cada 300ms
-        const decode = async () => {
-          if (!activeRef.current || !video) return
-          try {
-            const result = await readerRef.current.decodeFromVideoElement(video)
-            if (result && activeRef.current) {
-              onDetected(result.getText())
-              return // dejar de escanear tras éxito
-            }
-          } catch (e) {
-            if (!(e instanceof NotFoundException)) {
-              console.warn('[BarcodeScanner]', e)
-            }
-          }
-          // Programar siguiente intento
-          if (activeRef.current) {
-            timeoutId = setTimeout(decode, 300)
-          }
+        try {
+          await video.play()
+        } catch {
+          // Ignorar error si ya se está reproduciendo
         }
 
-        decode()
-      } catch (e: any) {
-        if (e?.name === 'NotAllowedError') {
-          setError('Permiso de cámara denegado. Habilítalo en la configuración del navegador.')
-        } else if (e?.name === 'NotFoundError') {
-          setError('No se encontró la cámara seleccionada.')
+        const codeReader = new BrowserMultiFormatReader()
+        const controls = await codeReader.decodeFromStream(
+          stream,
+          video,
+          (result, err, activeControls) => {
+            if (result) {
+              const text = result.getText()
+              if (text) {
+                activeControls.stop()
+                if (streamRef.current) {
+                  streamRef.current.getTracks().forEach((t) => t.stop())
+                  streamRef.current = null
+                }
+                onDetected(text)
+              }
+            }
+            if (err && !(err instanceof NotFoundException)) {
+              console.warn('[BarcodeScanner]', err)
+            }
+          },
+        )
+
+        if (isCancelled) {
+          controls.stop()
         } else {
-          setError('No se pudo iniciar la cámara. Intenta recargar la página.')
+          controlsRef.current = controls
+        }
+      } catch (e: any) {
+        if (isCancelled) return
+        if (e?.name === 'NotAllowedError') {
+          setError('Permiso de cámara denegado.')
+        } else {
+          setError('Error al iniciar la transmisión de video de la cámara.')
         }
       }
     }
 
-    startStream()
+    startScanning()
 
     return () => {
-      activeRef.current = false
-      clearTimeout(timeoutId)
-      stopStream()
+      isCancelled = true
+      if (controlsRef.current) {
+        controlsRef.current.stop()
+        controlsRef.current = null
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+      }
     }
   }, [selectedCamera])
 
@@ -147,7 +172,7 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
         </div>
 
         {error ? (
-          /* ── Estado de error ── */
+          /* Estado de error */
           <div className="flex flex-col items-center gap-3 p-6 text-center">
             <div className="text-4xl">⚠️</div>
             <p className="text-sm text-slate-600 dark:text-slate-300">{error}</p>
@@ -160,8 +185,8 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
           </div>
         ) : (
           <>
-            {/* ── Viewfinder ── */}
-            <div className="relative overflow-hidden bg-black">
+            {/* Viewfinder */}
+            <div className="relative min-h-64 overflow-hidden bg-black flex items-center justify-center">
               <video
                 ref={videoRef}
                 className="h-64 w-full object-cover"
@@ -195,11 +220,7 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
                 </label>
                 <select
                   value={selectedCamera}
-                  onChange={(e) => {
-                    activeRef.current = false
-                    setSelectedCamera(e.target.value)
-                    setTimeout(() => { activeRef.current = true }, 50)
-                  }}
+                  onChange={(e) => setSelectedCamera(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   {cameras.map((cam) => (
