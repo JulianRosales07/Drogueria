@@ -108,6 +108,8 @@ export function PosPage() {
   const isRegisterOpen = Boolean(cashRegisterQuery.data)
 
   const [showDailySales, setShowDailySales] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
   const dailySalesQuery = useQuery({
     queryKey: ['sales'],
     queryFn: () => listSales(),
@@ -509,11 +511,25 @@ export function PosPage() {
       }
       if (e.key === 'Escape') {
         setShowReceipt(false)
+        setShowMobileMenu(false)
       }
     }
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [cart, total])
+
+  // Cerrar menú móvil al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setShowMobileMenu(false)
+      }
+    }
+    if (showMobileMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showMobileMenu])
 
   const reprintLast = () => {
     if (!lastSale) {
@@ -532,24 +548,63 @@ export function PosPage() {
           <span className="mr-2 text-xs font-medium text-slate-400">Ticket #{ticketNumber}</span>
 
           <div className="ml-auto flex items-center gap-1">
+            {/* Botones normales: visibles solo en pantallas medianas+ */}
             <button
               onClick={() => setShowDailySales(true)}
-              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:flex"
             >
               📅 Ventas del día
             </button>
             <button
               onClick={clearCart}
-              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:flex"
             >
               🗑️ Limpiar <span className="text-xs text-slate-400">F8</span>
             </button>
             <button
               onClick={reprintLast}
-              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:flex"
             >
               🖨️ Reimprimir
             </button>
+
+            {/* Menú 3 puntos: visible solo en móvil */}
+            <div ref={mobileMenuRef} className="relative sm:hidden">
+              <button
+                onClick={() => setShowMobileMenu((v) => !v)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                aria-label="Más opciones"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                  <circle cx="12" cy="5" r="1.5" />
+                  <circle cx="12" cy="12" r="1.5" />
+                  <circle cx="12" cy="19" r="1.5" />
+                </svg>
+              </button>
+
+              {showMobileMenu && (
+                <div className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                  <button
+                    onClick={() => { setShowDailySales(true); setShowMobileMenu(false) }}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    📅 Ventas del día
+                  </button>
+                  <button
+                    onClick={() => { clearCart(); setShowMobileMenu(false) }}
+                    className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    🗑️ Limpiar venta
+                  </button>
+                  <button
+                    onClick={() => { reprintLast(); setShowMobileMenu(false) }}
+                    className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    🖨️ Reimprimir
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -784,22 +839,37 @@ export function PosPage() {
                 {isSplitPayment ? 'Pago mixto (2 medios)' : 'Método de pago'}
               </span>
               {!isSplitPayment && (
-                <div className="flex gap-1.5">
-                  {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((method) => (
-                    <button
-                      key={method}
-                      type="button"
-                      onClick={() => setPaymentMethod(method)}
-                      className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                        paymentMethod === method
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      {PAYMENT_METHOD_LABELS[method]}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  {/* Botones: visibles en pantallas medianas+ */}
+                  <div className="hidden gap-1.5 sm:flex">
+                    {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((method) => (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => setPaymentMethod(method)}
+                        className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                          paymentMethod === method
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {PAYMENT_METHOD_LABELS[method]}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Selector desplegable: visible solo en móvil */}
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                    className="block rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 sm:hidden"
+                  >
+                    {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((method) => (
+                      <option key={method} value={method}>
+                        {PAYMENT_METHOD_LABELS[method]}
+                      </option>
+                    ))}
+                  </select>
+                </>
               )}
             </div>
 
