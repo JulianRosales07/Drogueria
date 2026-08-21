@@ -194,7 +194,10 @@ export function InvoicesPage() {
       {
         header: 'Cliente',
         id: 'customer',
-        cell: ({ row }) => row.original.customers?.full_name || 'Venta de mostrador',
+        cell: ({ row }) =>
+          row.original.customers?.full_name ||
+          (row.original.notes ? row.original.notes.replace('Cliente: ', '') : null) ||
+          'Venta de mostrador',
       },
       {
         header: 'Cajero',
@@ -672,7 +675,11 @@ export function InvoicesPage() {
             ref={receiptRef}
             saleId={printingSale.id}
             date={printingSale.created_at}
-            customerName={printingSale.customers?.full_name}
+            customerName={
+              printingSale.customers?.full_name ||
+              (printingSale.notes ? printingSale.notes.replace('Cliente: ', '') : undefined) ||
+              undefined
+            }
             paymentMethod={printingSale.payment_method}
             paymentMethod2={printingSale.payment_method_2}
             amountPaid1={printingSale.amount_paid_1}

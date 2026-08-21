@@ -148,7 +148,6 @@ export function PosPage() {
   const createSaleMutation = useMutation({
     mutationFn: createSale,
     onSuccess: (sale) => {
-      lastCustomerNameRef.current = customerName.trim()  // save before clearing
       setCompletedSale(sale)
       setLastSale(sale)
       setShowReceipt(true)
@@ -450,6 +449,9 @@ export function PosPage() {
       customerNameRef.current?.focus()
       return
     }
+
+    const currentCustName = customerName.trim()
+    lastCustomerNameRef.current = currentCustName
 
     if (isSplitPayment) {
       if (parsedSplit1 <= 0 || parsedSplit2 <= 0) {
@@ -1674,6 +1676,7 @@ export function PosPage() {
                 date={completedSale.created_at}
                 customerName={
                   completedSale.customers?.full_name ||
+                  (completedSale.notes ? completedSale.notes.replace('Cliente: ', '') : undefined) ||
                   lastCustomerNameRef.current ||
                   undefined
                 }
