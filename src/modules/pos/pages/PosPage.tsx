@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { useReactToPrint } from 'react-to-print'
 import { Receipt } from '../../../components/Receipt'
+import { BarcodeScanner } from '../../../components/BarcodeScanner'
 import { listProducts, type Product } from '../../../services/api/products'
 import {
   createSale,
@@ -108,6 +109,7 @@ export function PosPage() {
   const isRegisterOpen = Boolean(cashRegisterQuery.data)
 
   const [showDailySales, setShowDailySales] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
   const dailySalesQuery = useQuery({
@@ -622,8 +624,8 @@ export function PosPage() {
 
         {/* ===== Buscador de producto ===== */}
         <div className="relative border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Código / Producto</span>
+          <div className="flex items-center gap-2">
+            <span className="hidden text-sm font-medium text-slate-500 dark:text-slate-400 sm:block">Código / Producto</span>
             <div className="flex-1">
               <input
                 ref={searchInputRef}
@@ -631,12 +633,23 @@ export function PosPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
-                placeholder="Escanea o escribe el nombre / código…"
+                placeholder="Buscar o escanear producto…"
                 className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-base text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-blue-500/20"
                 autoComplete="off"
               />
             </div>
-            <span className="hidden shrink-0 text-xs text-slate-400 sm:block">Enter agrega el producto</span>
+            {/* Botón cámara */}
+            <button
+              onClick={() => setShowScanner(true)}
+              title="Escanear con cámara"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-blue-500 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+              </svg>
+            </button>
+            <span className="hidden shrink-0 text-xs text-slate-400 sm:block">Enter agrega</span>
           </div>
 
           {searchQuery && filteredProducts.length > 0 && (
@@ -1482,6 +1495,42 @@ export function PosPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ===== Modal de escáner de cámara ===== */}
+      {showScanner && (
+        <BarcodeScanner
+          onDetected={(code) => {
+            setShowScanner(false)
+            // Buscar coincidencia exacta por SKU o código de barras del producto
+            const exactProduct = products.find(
+              (p) => p.sku === code.trim() || p.barcode === code.trim(),
+            )
+            if (exactProduct) {
+              addProductToCart(exactProduct)
+              return
+            }
+            // Buscar en presentaciones por unidad
+            const productWithUnit = products.find((p) =>
+              p.units.some((u) => u.barcode === code.trim()),
+            )
+            if (productWithUnit) {
+              const unit = productWithUnit.units.find((u) => u.barcode === code.trim())!
+              addToCartWithPresentation(productWithUnit, {
+                label: unit.name,
+                price: unit.price,
+                factor: unit.factor,
+                productUnitId: unit.id,
+              })
+              return
+            }
+            // Si no se encontró, dejar el código en el buscador para búsqueda manual
+            setSearchQuery(code.trim())
+            toast('Producto no encontrado. Puedes buscar manualmente.', { icon: '🔍' })
+            setTimeout(() => searchInputRef.current?.focus(), 100)
+          }}
+          onClose={() => setShowScanner(false)}
+        />
       )}
     </>
   )
