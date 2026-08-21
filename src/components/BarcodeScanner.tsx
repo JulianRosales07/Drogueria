@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { BrowserMultiFormatReader } from '@zxing/browser'
 import { NotFoundException } from '@zxing/library'
-import type { IScannerControls } from '@zxing/browser'
 
 type Props = {
   onDetected: (code: string) => void
@@ -10,60 +9,121 @@ type Props = {
 
 export function BarcodeScanner({ onDetected, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const activeRef = useRef(true)
+  const readerRef = useRef(new BrowserMultiFormatReader())
+
   const [error, setError] = useState<string | null>(null)
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
   const [selectedCamera, setSelectedCamera] = useState<string | undefined>(undefined)
-  const controlsRef = useRef<IScannerControls | null>(null)
 
-  // Cargar lista de cámaras disponibles
+  // 1. Cargar lista de cámaras al montar
   useEffect(() => {
-    BrowserMultiFormatReader.listVideoInputDevices()
+    // Primero pedir permiso para que los labels aparezcan
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then((tempStream) => {
+        tempStream.getTracks().forEach((t) => t.stop())
+        return navigator.mediaDevices.enumerateDevices()
+      })
       .then((devices) => {
-        setCameras(devices)
-        // Preferir cámara trasera en móviles
-        const back = devices.find(
-          (d) =>
-            d.label.toLowerCase().includes('back') ||
-            d.label.toLowerCase().includes('trasera') ||
-            d.label.toLowerCase().includes('rear') ||
-            d.label.toLowerCase().includes('environment'),
+        const videoDevices = devices.filter((d) => d.kind === 'videoinput')
+        setCameras(videoDevices)
+        // Preferir cámara trasera (environment / back / rear)
+        const back = videoDevices.find((d) =>
+          /back|rear|environment|trasera/i.test(d.label),
         )
-        setSelectedCamera(back?.deviceId ?? devices[0]?.deviceId)
-      })
-      .catch(() => setError('No se pudo acceder a las cámaras.'))
-  }, [])
-
-  // Iniciar/reiniciar el escaneo al cambiar cámara
-  useEffect(() => {
-    if (!selectedCamera || !videoRef.current) return
-
-    const reader = new BrowserMultiFormatReader()
-
-    reader
-      .decodeFromVideoDevice(selectedCamera, videoRef.current, (result, err, controls) => {
-        if (result) {
-          controls.stop()
-          onDetected(result.getText())
-        }
-        if (err && !(err instanceof NotFoundException)) {
-          // NotFoundException es normal (aún buscando), ignorar
-          console.warn(err)
-        }
-      })
-      .then((controls) => {
-        controlsRef.current = controls
+        setSelectedCamera(back?.deviceId ?? videoDevices[0]?.deviceId)
       })
       .catch((e) => {
         if (e?.name === 'NotAllowedError') {
           setError('Permiso de cámara denegado. Habilítalo en la configuración del navegador.')
         } else {
-          setError('No se pudo iniciar la cámara.')
+          setError('No se encontraron cámaras disponibles.')
         }
       })
 
     return () => {
-      controlsRef.current?.stop()
-      controlsRef.current = null
+      activeRef.current = false
+    }
+  }, [])
+
+  // 2. Iniciar stream y loop de escaneo cuando se conoce la cámara
+  useEffect(() => {
+    if (!selectedCamera) return
+
+    activeRef.current = true
+    let timeoutId: ReturnType<typeof setTimeout>
+
+    const stopStream = () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
+    }
+
+    const startStream = async () => {
+      stopStream()
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            deviceId: { exact: selectedCamera },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        })
+
+        if (!activeRef.current) {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
+
+        streamRef.current = stream
+        const video = videoRef.current
+        if (!video) return
+
+        video.srcObject = stream
+        video.setAttribute('playsinline', 'true')
+        video.muted = true
+        await video.play()
+
+        // Loop de escaneo: intenta decodificar cada 300ms
+        const decode = async () => {
+          if (!activeRef.current || !video) return
+          try {
+            const result = await readerRef.current.decodeFromVideoElement(video)
+            if (result && activeRef.current) {
+              onDetected(result.getText())
+              return // dejar de escanear tras éxito
+            }
+          } catch (e) {
+            if (!(e instanceof NotFoundException)) {
+              console.warn('[BarcodeScanner]', e)
+            }
+          }
+          // Programar siguiente intento
+          if (activeRef.current) {
+            timeoutId = setTimeout(decode, 300)
+          }
+        }
+
+        decode()
+      } catch (e: any) {
+        if (e?.name === 'NotAllowedError') {
+          setError('Permiso de cámara denegado. Habilítalo en la configuración del navegador.')
+        } else if (e?.name === 'NotFoundError') {
+          setError('No se encontró la cámara seleccionada.')
+        } else {
+          setError('No se pudo iniciar la cámara. Intenta recargar la página.')
+        }
+      }
+    }
+
+    startStream()
+
+    return () => {
+      activeRef.current = false
+      clearTimeout(timeoutId)
+      stopStream()
     }
   }, [selectedCamera])
 
@@ -86,8 +146,8 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
           </button>
         </div>
 
-        {/* Cuerpo */}
         {error ? (
+          /* ── Estado de error ── */
           <div className="flex flex-col items-center gap-3 p-6 text-center">
             <div className="text-4xl">⚠️</div>
             <p className="text-sm text-slate-600 dark:text-slate-300">{error}</p>
@@ -100,25 +160,25 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
           </div>
         ) : (
           <>
-            {/* Viewfinder */}
-            <div className="relative bg-black">
+            {/* ── Viewfinder ── */}
+            <div className="relative overflow-hidden bg-black">
               <video
                 ref={videoRef}
                 className="h-64 w-full object-cover"
-                muted
                 playsInline
+                muted
                 autoPlay
               />
+
               {/* Marco de guía */}
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <div className="relative h-40 w-64">
-                  {/* Esquinas del marco */}
                   <span className="absolute left-0 top-0 h-6 w-6 rounded-tl-md border-l-2 border-t-2 border-blue-400" />
                   <span className="absolute right-0 top-0 h-6 w-6 rounded-tr-md border-r-2 border-t-2 border-blue-400" />
                   <span className="absolute bottom-0 left-0 h-6 w-6 rounded-bl-md border-b-2 border-l-2 border-blue-400" />
                   <span className="absolute bottom-0 right-0 h-6 w-6 rounded-br-md border-b-2 border-r-2 border-blue-400" />
                   {/* Línea de escaneo animada */}
-                  <span className="scan-line absolute left-1 right-1 h-0.5 bg-blue-400/80" />
+                  <span className="scan-line absolute left-1 right-1 h-0.5 rounded-full bg-blue-400/80" />
                 </div>
               </div>
             </div>
@@ -127,7 +187,7 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
               Apunta la cámara al código de barras del producto
             </p>
 
-            {/* Selector de cámara (si hay más de una) */}
+            {/* Selector de cámara si hay más de una */}
             {cameras.length > 1 && (
               <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
                 <label className="mb-1 block text-xs font-medium text-slate-500">
@@ -135,7 +195,11 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
                 </label>
                 <select
                   value={selectedCamera}
-                  onChange={(e) => setSelectedCamera(e.target.value)}
+                  onChange={(e) => {
+                    activeRef.current = false
+                    setSelectedCamera(e.target.value)
+                    setTimeout(() => { activeRef.current = true }, 50)
+                  }}
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   {cameras.map((cam) => (
@@ -161,7 +225,7 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
 
       <style>{`
         .scan-line {
-          top: 50%;
+          top: 8px;
           animation: scan 1.8s ease-in-out infinite;
         }
         @keyframes scan {
