@@ -1129,25 +1129,31 @@ export function PosPage() {
                     })
                   : []
 
-                const totalToday = scopedSales.reduce((sum, sale) => sum + sale.total, 0)
+                const currentTotal = currentRegister?.salesTotalSoFar
+                const totalToday = currentTotal !== undefined ? currentTotal : scopedSales.reduce((sum, sale) => sum + sale.total, 0)
                 const itemsToday = scopedSales.reduce(
                   (sum, sale) => sum + sale.sale_items.reduce((iSum, item) => iSum + item.unit_quantity, 0),
                   0,
                 )
 
-                // Desglose por método de pago (tomando en cuenta pagos mixtos)
-                const byMethod: Record<string, number> = { CASH: 0, CARD: 0, TRANSFER: 0, PENDING: 0, OTHER: 0 }
-                for (const sale of scopedSales) {
-                  if (sale.payment_method_2) {
-                    const pm1 = sale.payment_method || 'CASH'
-                    const pm2 = sale.payment_method_2 || 'TRANSFER'
-                    const amt1 = Number(sale.amount_paid_1 ?? 0)
-                    const amt2 = Number(sale.amount_paid_2 ?? 0)
-                    byMethod[pm1] = (byMethod[pm1] || 0) + amt1
-                    byMethod[pm2] = (byMethod[pm2] || 0) + amt2
-                  } else {
-                    const pm = sale.payment_method || 'CASH'
-                    byMethod[pm] = (byMethod[pm] || 0) + sale.total
+                // Desglose por método de pago (sincronizado con la caja del turno si está disponible)
+                const byMethod: Record<string, number> = currentRegister?.salesByPaymentMethodSoFar
+                  ? { ...currentRegister.salesByPaymentMethodSoFar }
+                  : { CASH: 0, CARD: 0, TRANSFER: 0, PENDING: 0, OTHER: 0 }
+
+                if (!currentRegister?.salesByPaymentMethodSoFar) {
+                  for (const sale of scopedSales) {
+                    if (sale.payment_method_2) {
+                      const pm1 = sale.payment_method || 'CASH'
+                      const pm2 = sale.payment_method_2 || 'TRANSFER'
+                      const amt1 = Number(sale.amount_paid_1 ?? 0)
+                      const amt2 = Number(sale.amount_paid_2 ?? 0)
+                      byMethod[pm1] = (byMethod[pm1] || 0) + amt1
+                      byMethod[pm2] = (byMethod[pm2] || 0) + amt2
+                    } else {
+                      const pm = sale.payment_method || 'CASH'
+                      byMethod[pm] = (byMethod[pm] || 0) + sale.total
+                    }
                   }
                 }
 
@@ -1194,7 +1200,7 @@ export function PosPage() {
                         <p className="mt-0.5 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{itemsToday}</p>
                       </div>
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 sm:p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Total neto</p>
                         <p className="mt-0.5 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{money(totalToday)}</p>
                       </div>
                     </div>
