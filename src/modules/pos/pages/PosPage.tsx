@@ -142,6 +142,8 @@ export function PosPage() {
   const [ticketNumber, setTicketNumber] = useState(1)
   const [presentationPicker, setPresentationPicker] = useState<Product | null>(null)
   const [viewingSale, setViewingSale] = useState<Sale | null>(null)
+  const [dailySalesTab, setDailySalesTab] = useState<'PAYMENTS' | 'PRODUCTS'>('PAYMENTS')
+  const [dailySalesPaymentFilter, setDailySalesPaymentFilter] = useState<string>('ALL')
 
   const createSaleMutation = useMutation({
     mutationFn: createSale,
@@ -1182,165 +1184,314 @@ export function PosPage() {
 
                 return (
                   <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
-                    <p className="mb-3 text-xs text-slate-400">
-                      {currentRegister
-                        ? `Ventas del turno actual, abierto desde las ${formatTime(currentRegister.openedAt)}`
-                        : lastClosedToday
-                          ? `Caja cerrada. Mostrando el último turno (${formatTime(lastClosedToday.openedAt)} – ${formatTime(lastClosedToday.closedAt!)})`
-                          : 'No hay ningún turno de caja registrado hoy'}
-                    </p>
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
+                      <p className="text-xs text-slate-400">
+                        {currentRegister
+                          ? `Turno actual desde las ${formatTime(currentRegister.openedAt)}`
+                          : lastClosedToday
+                            ? `Último turno (${formatTime(lastClosedToday.openedAt)} – ${formatTime(lastClosedToday.closedAt!)})`
+                            : 'Sin turno hoy'}
+                      </p>
 
-                    <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 sm:p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Ventas</p>
-                        <p className="mt-0.5 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{scopedSales.length}</p>
-                      </div>
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 sm:p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Unidades</p>
-                        <p className="mt-0.5 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{itemsToday}</p>
-                      </div>
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 sm:p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Total neto</p>
-                        <p className="mt-0.5 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{money(totalToday)}</p>
+                      {/* 2 Botones para alternar vistas */}
+                      <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800">
+                        <button
+                          type="button"
+                          onClick={() => setDailySalesTab('PAYMENTS')}
+                          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                            dailySalesTab === 'PAYMENTS'
+                              ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-700 dark:text-blue-400'
+                              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                          }`}
+                        >
+                          💳 Ingresos por método
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDailySalesTab('PRODUCTS')}
+                          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                            dailySalesTab === 'PRODUCTS'
+                              ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-700 dark:text-blue-400'
+                              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                          }`}
+                        >
+                          📦 Productos y facturas
+                        </button>
                       </div>
                     </div>
 
-                    {/* Desglose por método de pago */}
-                    {scopedSales.length > 0 && (
-                      <div className="mb-4">
-                        <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">Por método de pago</h3>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                          {([['CASH','💵','Efectivo'],['CARD','💳','Tarjeta'],['TRANSFER','🏦','Transferencia'],['PENDING','⏳','Pendiente'],['OTHER','🔄','Otro']] as const).map(([key, icon, label]) => {
-                            const val = byMethod[key] || 0
-                            if (val === 0 && key !== 'CASH') return null
-                            return (
-                              <div key={key} className={`rounded-lg border p-2 text-center ${
-                                key === 'PENDING' && val > 0
-                                  ? 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20'
-                                  : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60'
-                              }`}>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">{icon} {label}</p>
-                                <p className={`mt-0.5 text-sm font-semibold ${
-                                  key === 'PENDING' && val > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'
-                                }`}>{money(val)}</p>
+                    {/* Resumen principal */}
+                    <div className="mb-4 grid grid-cols-3 gap-2 sm:gap-3">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 sm:p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Ventas</p>
+                        <p className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 dark:text-white">{scopedSales.length}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 sm:p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Unidades</p>
+                        <p className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 dark:text-white">{itemsToday}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 sm:p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Total neto</p>
+                        <p className="mt-0.5 text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">{money(totalToday)}</p>
+                      </div>
+                    </div>
+
+                    {dailySalesTab === 'PAYMENTS' ? (
+                      /* VISTA 1: INGRESOS POR CADA MÉTODO DE PAGO */
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            Ingresos por cada método de pago
+                          </h3>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                            {([
+                              ['CASH', '💵', 'Efectivo', 'emerald'],
+                              ['TRANSFER', '🏦', 'Transferencia', 'purple'],
+                              ['CARD', '💳', 'Tarjeta', 'blue'],
+                              ['PENDING', '⏳', 'Pendiente (Fiado)', 'amber'],
+                              ['OTHER', '🔄', 'Otro', 'slate'],
+                            ] as const).map(([key, icon, label]) => {
+                              const val = byMethod[key] || 0
+                              const isSelected = dailySalesPaymentFilter === key
+                              return (
+                                <button
+                                  type="button"
+                                  key={key}
+                                  onClick={() => setDailySalesPaymentFilter((prev) => (prev === key ? 'ALL' : key))}
+                                  className={`rounded-xl border p-3 text-left transition ${
+                                    isSelected
+                                      ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-400/30 dark:border-blue-500 dark:bg-blue-950/40'
+                                      : key === 'PENDING' && val > 0
+                                      ? 'border-amber-200 bg-amber-50/50 hover:border-amber-300 dark:border-amber-800 dark:bg-amber-900/10'
+                                      : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/80 dark:hover:border-slate-600'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">{icon} {label}</span>
+                                    {totalToday > 0 && val > 0 && (
+                                      <span className="text-[10px] font-medium text-slate-400">
+                                        {Math.round((val / totalToday) * 100)}%
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className={`mt-1 text-base font-bold ${
+                                    key === 'PENDING' && val > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'
+                                  }`}>{money(val)}</p>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Lista de facturas filtradas por método */}
+                        <div>
+                          <div className="mb-2 flex items-center justify-between">
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                              {dailySalesPaymentFilter === 'ALL'
+                                ? 'Facturas del turno'
+                                : `Facturas pagadas con ${PAYMENT_METHOD_LABELS[dailySalesPaymentFilter as PaymentMethod] || dailySalesPaymentFilter}`}
+                            </h3>
+                            {dailySalesPaymentFilter !== 'ALL' && (
+                              <button
+                                onClick={() => setDailySalesPaymentFilter('ALL')}
+                                className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                              >
+                                Ver todos los métodos
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="max-h-60 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                            {(() => {
+                              const filtered = scopedSales.filter((sale) => {
+                                if (dailySalesPaymentFilter === 'ALL') return true
+                                return sale.payment_method === dailySalesPaymentFilter || sale.payment_method_2 === dailySalesPaymentFilter
+                              })
+
+                              if (filtered.length === 0) {
+                                return (
+                                  <div className="py-6 text-center text-xs text-slate-400">
+                                    No hay ventas con este método de pago.
+                                  </div>
+                                )
+                              }
+
+                              return (
+                                <table className="w-full text-xs">
+                                  <thead className="sticky top-0 bg-slate-50 uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                    <tr>
+                                      <th className="px-3 py-2 text-left font-medium">Factura</th>
+                                      <th className="px-3 py-2 text-left font-medium">Hora</th>
+                                      <th className="px-3 py-2 text-left font-medium">Cliente / Deudor</th>
+                                      <th className="px-3 py-2 text-left font-medium">Método</th>
+                                      <th className="px-3 py-2 text-right font-medium">Total</th>
+                                      <th className="px-3 py-2 text-center" />
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {filtered
+                                      .slice()
+                                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                                      .map((sale) => (
+                                        <tr key={sale.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+                                          <td className="px-3 py-2 font-mono font-medium text-slate-700 dark:text-slate-300">
+                                            #{sale.id.substring(0, 8).toUpperCase()}
+                                          </td>
+                                          <td className="px-3 py-2 text-slate-400">{formatTime(sale.created_at)}</td>
+                                          <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                                            {sale.customers?.full_name || sale.notes?.replace('Cliente: ', '') || 'Venta de mostrador'}
+                                          </td>
+                                          <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                                            {sale.payment_method_2 ? (
+                                              <span className="font-medium">
+                                                {PAYMENT_METHOD_LABELS[sale.payment_method]} + {PAYMENT_METHOD_LABELS[sale.payment_method_2]}
+                                              </span>
+                                            ) : sale.payment_method === 'PENDING' ? (
+                                              <span className="rounded bg-amber-100 px-1.5 py-0.5 font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                                                FIADO
+                                              </span>
+                                            ) : (
+                                              PAYMENT_METHOD_LABELS[sale.payment_method] || sale.payment_method
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-2 text-right font-bold text-slate-900 dark:text-white">
+                                            {money(sale.total)}
+                                          </td>
+                                          <td className="px-3 py-2 text-center">
+                                            <button
+                                              onClick={() => setViewingSale(sale)}
+                                              className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                                            >
+                                              Ver
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                  </tbody>
+                                </table>
+                              )
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* VISTA 2: PRODUCTOS VENDIDOS Y FACTURAS */
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            Productos vendidos
+                          </h3>
+                          <div className="max-h-48 overflow-y-auto overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                            {productSummary.length === 0 ? (
+                              <div className="py-6 text-center text-xs text-slate-400">
+                                Aún no se ha vendido ningún producto.
                               </div>
-                            )
-                          })}
+                            ) : (
+                              <table className="w-full min-w-[320px] text-xs">
+                                <thead className="sticky top-0 bg-slate-50 uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left font-medium">Producto</th>
+                                    <th className="px-3 py-2 text-center font-medium">Cant.</th>
+                                    <th className="px-3 py-2 text-right font-medium">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {productSummary.map((item) => (
+                                    <tr
+                                      key={`${item.productName}-${item.unitLabel}`}
+                                      className="border-b border-slate-100 last:border-0 dark:border-slate-800"
+                                    >
+                                      <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                                        {item.productName}
+                                        {item.unitLabel !== 'Unidad' && (
+                                          <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+                                            {item.unitLabel}
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="px-3 py-2 text-center text-slate-500 dark:text-slate-400">
+                                        {item.quantity}
+                                      </td>
+                                      <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">
+                                        {money(item.total)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            Tickets / Facturas emitidas
+                          </h3>
+                          <div className="max-h-48 overflow-y-auto overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                            {scopedSales.length === 0 ? (
+                              <div className="py-6 text-center text-xs text-slate-400">
+                                Aún no hay ventas registradas.
+                              </div>
+                            ) : (
+                              <table className="w-full min-w-[400px] text-xs">
+                                <thead className="sticky top-0 bg-slate-50 uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left font-medium">Factura</th>
+                                    <th className="px-3 py-2 text-left font-medium">Hora</th>
+                                    <th className="px-3 py-2 text-left font-medium">Cliente</th>
+                                    <th className="px-3 py-2 text-center font-medium">Ítems</th>
+                                    <th className="px-3 py-2 text-right font-medium">Total</th>
+                                    <th className="px-3 py-2 text-center font-medium" />
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {scopedSales
+                                    .slice()
+                                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                                    .map((sale) => (
+                                      <tr
+                                        key={sale.id}
+                                        className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${
+                                          sale.payment_method === 'PENDING' ? 'bg-amber-50/60 dark:bg-amber-900/10' : ''
+                                        }`}
+                                      >
+                                        <td className="px-3 py-2 font-mono font-medium text-slate-500 dark:text-slate-400">
+                                          #{sale.id.substring(0, 8).toUpperCase()}
+                                          {sale.payment_method === 'PENDING' && (
+                                            <span className="ml-1 inline-block rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-800/40 dark:text-amber-400">FIADO</span>
+                                          )}
+                                        </td>
+                                        <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
+                                          {formatTime(sale.created_at)}
+                                        </td>
+                                        <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                                          {sale.customers?.full_name || sale.notes?.replace('Cliente: ', '') || 'Venta de mostrador'}
+                                        </td>
+                                        <td className="px-3 py-2 text-center text-slate-500 dark:text-slate-400">
+                                          {sale.sale_items.reduce((sum, item) => sum + item.unit_quantity, 0)}
+                                        </td>
+                                        <td className={`px-3 py-2 text-right font-semibold ${
+                                          sale.payment_method === 'PENDING' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'
+                                        }`}>
+                                          {money(sale.total)}
+                                        </td>
+                                        <td className="px-3 py-2 text-center">
+                                          <button
+                                            onClick={() => setViewingSale(sale)}
+                                            className="rounded-md px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10"
+                                          >
+                                            Ver
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
-
-                    <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">
-                      Productos vendidos
-                    </h3>
-                    <div className="mb-4 max-h-40 overflow-y-auto overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-                      {productSummary.length === 0 ? (
-                        <div className="py-6 text-center text-sm text-slate-400">
-                          Aún no se ha vendido ningún producto.
-                        </div>
-                      ) : (
-                        <table className="w-full min-w-[320px] text-sm">
-                          <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                            <tr>
-                              <th className="px-3 py-2 text-left font-medium">Producto</th>
-                              <th className="px-3 py-2 text-center font-medium">Cant.</th>
-                              <th className="px-3 py-2 text-right font-medium">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {productSummary.map((item) => (
-                              <tr
-                                key={`${item.productName}-${item.unitLabel}`}
-                                className="border-b border-slate-100 last:border-0 dark:border-slate-800"
-                              >
-                                <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
-                                  {item.productName}
-                                  {item.unitLabel !== 'Unidad' && (
-                                    <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
-                                      {item.unitLabel}
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="px-3 py-2 text-center text-slate-500 dark:text-slate-400">
-                                  {item.quantity}
-                                </td>
-                                <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">
-                                  {money(item.total)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-
-                    <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">
-                      Tickets
-                    </h3>
-                    <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-                      {scopedSales.length === 0 ? (
-                        <div className="py-10 text-center text-sm text-slate-400">
-                          Aún no hay ventas registradas.
-                        </div>
-                      ) : (
-                        <table className="w-full min-w-[400px] text-sm">
-                          <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                            <tr>
-                              <th className="px-3 py-2 text-left font-medium">Factura</th>
-                              <th className="px-3 py-2 text-left font-medium">Hora</th>
-                              <th className="px-3 py-2 text-left font-medium">Cliente</th>
-                              <th className="px-3 py-2 text-center font-medium">Ítems</th>
-                              <th className="px-3 py-2 text-right font-medium">Total</th>
-                              <th className="px-3 py-2 text-center font-medium" />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {scopedSales
-                              .slice()
-                              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                              .map((sale) => (
-                                <tr
-                                  key={sale.id}
-                                  className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${
-                                    sale.payment_method === 'PENDING' ? 'bg-amber-50/60 dark:bg-amber-900/10' : ''
-                                  }`}
-                                >
-                                  <td className="px-3 py-2 font-mono text-xs text-slate-500 dark:text-slate-400">
-                                    #{sale.id.substring(0, 8).toUpperCase()}
-                                    {sale.payment_method === 'PENDING' && (
-                                      <span className="ml-1 inline-block rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-800/40 dark:text-amber-400">FIADO</span>
-                                    )}
-                                  </td>
-                                  <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
-                                    {formatTime(sale.created_at)}
-                                  </td>
-                                  <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
-                                    {sale.customers?.full_name || sale.notes?.replace('Cliente: ', '') || 'Venta de mostrador'}
-                                  </td>
-                                  <td className="px-3 py-2 text-center text-slate-500 dark:text-slate-400">
-                                    {sale.sale_items.reduce((sum, item) => sum + item.unit_quantity, 0)}
-                                  </td>
-                                  <td className={`px-3 py-2 text-right font-semibold ${
-                                    sale.payment_method === 'PENDING' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'
-                                  }`}>
-                                    {money(sale.total)}
-                                  </td>
-                                  <td className="px-3 py-2 text-center">
-                                    <button
-                                      onClick={() => setViewingSale(sale)}
-                                      className="rounded-md px-2 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10"
-                                    >
-                                      Ver
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-                  </div>
-                )
               })()
             )}
           </div>

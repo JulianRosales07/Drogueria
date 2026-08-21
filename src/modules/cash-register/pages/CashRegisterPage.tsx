@@ -249,16 +249,27 @@ export function CashRegisterPage() {
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Cerrar caja</h3>
                   <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                    Ingresa el efectivo total físico que hay en el cajón para realizar el arqueo.
+                    Ingresa el monto para realizar el arqueo del turno.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setClosingAmount(String(current.openingAmount + current.cashSalesTotalSoFar))}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                >
-                  ⚡ Usar valor esperado: {money(current.openingAmount + current.cashSalesTotalSoFar)}
-                </button>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setClosingAmount(String(current.openingAmount + current.cashSalesTotalSoFar))}
+                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                    title="Base + Ventas en efectivo"
+                  >
+                    💵 Solo Efectivo: {money(current.openingAmount + current.cashSalesTotalSoFar)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClosingAmount(String(current.openingAmount + current.salesTotalSoFar))}
+                    className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                    title="Base + Todas las ventas (Efectivo + Transferencias + Tarjetas)"
+                  >
+                    ⚡ Total Consolidado: {money(current.openingAmount + current.salesTotalSoFar)}
+                  </button>
+                </div>
               </div>
 
               {/* Guía de cálculo completa */}
