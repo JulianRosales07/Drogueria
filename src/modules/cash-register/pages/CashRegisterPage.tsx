@@ -261,23 +261,54 @@ export function CashRegisterPage() {
                 </button>
               </div>
 
-              {/* Guía de cálculo */}
-              <div className="mt-3 rounded-lg border border-blue-100 bg-white p-3 text-xs dark:border-blue-950 dark:bg-slate-800/80">
-                <p className="font-medium text-slate-700 dark:text-slate-300">
-                  💡 <strong>¿Qué valor debes colocar?</strong> Debes colocar el efectivo físico total en caja:
-                </p>
-                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
-                  <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800 dark:bg-slate-700 dark:text-slate-200">
-                    Base ({money(current.openingAmount)})
-                  </span>
-                  <span>+</span>
-                  <span className="rounded bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                    Efectivo vendido ({money(current.cashSalesTotalSoFar)})
-                  </span>
-                  <span>=</span>
-                  <span className="rounded bg-blue-50 px-2 py-0.5 font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-                    Total esperado en cajón: {money(current.openingAmount + current.cashSalesTotalSoFar)}
-                  </span>
+              {/* Guía de cálculo completa */}
+              <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3.5 text-xs dark:border-slate-800 dark:bg-slate-800/80 space-y-2">
+                <div>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200">
+                    💵 1. Efectivo físico en cajón (Arqueo):
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                    <span className="rounded bg-slate-100 px-2 py-0.5 font-medium dark:bg-slate-700">
+                      Base ({money(current.openingAmount)})
+                    </span>
+                    <span>+</span>
+                    <span className="rounded bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      Efectivo ventas ({money(current.cashSalesTotalSoFar)})
+                    </span>
+                    <span>=</span>
+                    <span className="rounded bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                      {money(current.openingAmount + current.cashSalesTotalSoFar)} en billetes/monedas
+                    </span>
+                  </div>
+                </div>
+
+                {((current.salesByPaymentMethodSoFar?.TRANSFER || 0) > 0 || (current.salesByPaymentMethodSoFar?.CARD || 0) > 0) && (
+                  <div className="border-t border-slate-100 pt-2 dark:border-slate-700/60">
+                    <p className="font-semibold text-slate-800 dark:text-slate-200">
+                      🏦 2. Pagos digitales / Bancos (No van al cajón físico):
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
+                      {(current.salesByPaymentMethodSoFar?.TRANSFER || 0) > 0 && (
+                        <span className="rounded bg-purple-50 px-2 py-0.5 font-medium text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
+                          Transferencias: {money(current.salesByPaymentMethodSoFar.TRANSFER)}
+                        </span>
+                      )}
+                      {(current.salesByPaymentMethodSoFar?.CARD || 0) > 0 && (
+                        <span className="rounded bg-blue-50 px-2 py-0.5 font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                          Tarjetas: {money(current.salesByPaymentMethodSoFar.CARD)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t border-slate-100 pt-2 dark:border-slate-700/60">
+                  <p className="font-semibold text-slate-800 dark:text-slate-200">
+                    📊 3. Total general del turno (Base + Todas las ventas):
+                  </p>
+                  <p className="mt-0.5 text-xs font-bold text-blue-700 dark:text-blue-400">
+                    {money(current.openingAmount + current.salesTotalSoFar)} (Efectivo + Transferencias + Tarjetas)
+                  </p>
                 </div>
               </div>
 
