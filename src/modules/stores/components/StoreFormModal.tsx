@@ -111,15 +111,15 @@ export function StoreFormModal({ open, store, onClose }: Props) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] flex flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-700">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
               {isEditing ? 'Editar establecimiento' : 'Nuevo establecimiento'}
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               {isEditing ? 'Modifica los datos del establecimiento.' : 'Completa los datos para registrar un nuevo establecimiento.'}
             </p>
           </div>
@@ -133,120 +133,122 @@ export function StoreFormModal({ open, store, onClose }: Props) {
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
-          {/* Nombre */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Nombre del Establecimiento <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) => handleChange('name', e.target.value)}
-              placeholder="Ej: Mi Negocio"
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
-            />
-          </div>
-
-          {/* Tipo de establecimiento */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Tipo de Establecimiento <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={form.type}
-              onChange={(e) => handleChange('type', e.target.value)}
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-            >
-              <option value="PHARMACY">💊 Droguería / Farmacia</option>
-              <option value="STORE">🏪 Tienda General / Comercio</option>
-            </select>
-          </div>
-
-          {/* NIT y Teléfono */}
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden min-h-0">
+          <div className="flex-1 overflow-y-auto space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+            {/* Nombre */}
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                NIT / Identificación
+                Nombre del Establecimiento <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={form.nit}
-                onChange={(e) => handleChange('nit', e.target.value)}
-                placeholder="900.000.000-1"
+                value={form.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                placeholder="Ej: Mi Negocio"
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
               />
             </div>
+
+            {/* Tipo de establecimiento */}
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Teléfono
+                Tipo de Establecimiento <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={form.type}
+                onChange={(e) => handleChange('type', e.target.value)}
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+              >
+                <option value="PHARMACY">💊 Droguería / Farmacia</option>
+                <option value="STORE">🏪 Tienda General / Comercio</option>
+              </select>
+            </div>
+
+            {/* NIT y Teléfono */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  NIT / Identificación
+                </label>
+                <input
+                  type="text"
+                  value={form.nit}
+                  onChange={(e) => handleChange('nit', e.target.value)}
+                  placeholder="900.000.000-1"
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Teléfono
+                </label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => handleChange('phone', e.target.value)}
+                  placeholder="3001234567"
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
+                />
+              </div>
+            </div>
+
+            {/* Dirección y Email */}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Dirección
               </label>
               <input
                 type="text"
-                value={form.phone}
-                onChange={(e) => handleChange('phone', e.target.value)}
-                placeholder="3001234567"
+                value={form.address}
+                onChange={(e) => handleChange('address', e.target.value)}
+                placeholder="Calle 123 # 45 - 67"
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
               />
             </div>
-          </div>
 
-          {/* Dirección y Email */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Dirección
-            </label>
-            <input
-              type="text"
-              value={form.address}
-              onChange={(e) => handleChange('address', e.target.value)}
-              placeholder="Calle 123 # 45 - 67"
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Correo Electrónico
-            </label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(e) => handleChange('email', e.target.value)}
-              placeholder="contacto@negocio.com"
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
-            />
-          </div>
-
-          {isEditing && (
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={form.isActive}
-                onChange={(e) => handleChange('isActive', e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label htmlFor="isActive" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Establecimiento Activo (Permite accesos y operaciones)
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Correo Electrónico
               </label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                placeholder="contacto@negocio.com"
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
+              />
             </div>
-          )}
+
+            {isEditing && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={form.isActive}
+                  onChange={(e) => handleChange('isActive', e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="isActive" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Establecimiento Activo (Permite accesos y operaciones)
+                </label>
+              </div>
+            )}
+          </div>
 
           {/* Footer */}
-          <div className="flex justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-700">
+          <div className="flex shrink-0 flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 border-t border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-700">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 text-center"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+              className="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 text-center"
             >
               {isLoading ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear establecimiento'}
             </button>

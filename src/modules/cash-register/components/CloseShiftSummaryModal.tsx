@@ -45,11 +45,11 @@ export function CloseShiftSummaryModal({ open, register, onClose }: Props) {
         : 'text-red-600 dark:text-red-400'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl dark:bg-slate-900">
-        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+      <div className="flex max-h-[92vh] sm:max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl dark:bg-slate-900 overflow-hidden">
+        <div className="flex shrink-0 items-start justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
               Turno cerrado · Resumen del día
             </h2>
             <p className="mt-0.5 text-xs text-slate-400">
@@ -66,34 +66,34 @@ export function CloseShiftSummaryModal({ open, register, onClose }: Props) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           {/* Rentabilidad del turno */}
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Rentabilidad del turno</h3>
           <p className="mt-1 text-xs text-slate-400">
             Utilidad = Ventas − Costo de los productos vendidos
           </p>
 
-          <div className="mt-3 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+          <div className="mt-3 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4 dark:border-slate-800 dark:bg-slate-800/60">
               <p className="text-xs text-slate-500 dark:text-slate-400">Ventas</p>
-              <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">
+              <p className="mt-1 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">
                 {money(salesTotal)}
               </p>
               <p className="mt-0.5 text-[11px] text-slate-400">
                 Efectivo {money(register.cashSalesTotal ?? 0)}
               </p>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4 dark:border-slate-800 dark:bg-slate-800/60">
               <p className="text-xs text-slate-500 dark:text-slate-400">Costo de lo vendido</p>
-              <p className="mt-1 text-xl font-semibold text-amber-600 dark:text-amber-400">
+              <p className="mt-1 text-lg sm:text-xl font-semibold text-amber-600 dark:text-amber-400">
                 {cogs !== null ? money(cogs) : 'No disponible'}
               </p>
               <p className="mt-0.5 text-[11px] text-slate-400">Costo real de la mercancía entregada</p>
             </div>
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900 dark:bg-emerald-500/5">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 sm:p-4 dark:border-emerald-900 dark:bg-emerald-500/5">
               <p className="text-xs text-slate-500 dark:text-slate-400">Utilidad generada</p>
               <p
-                className={`mt-1 text-xl font-semibold ${
+                className={`mt-1 text-lg sm:text-xl font-semibold ${
                   (profit ?? 0) >= 0
                     ? 'text-emerald-600 dark:text-emerald-400'
                     : 'text-red-600 dark:text-red-400'
@@ -117,7 +117,7 @@ export function CloseShiftSummaryModal({ open, register, onClose }: Props) {
           {/* Arqueo de caja */}
           <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Arqueo de efectivo</h3>
-            <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   <tr>
@@ -166,18 +166,18 @@ export function CloseShiftSummaryModal({ open, register, onClose }: Props) {
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+        <div className="flex shrink-0 flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 border-t border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           <button
             type="button"
             onClick={() => window.print()}
-            className="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="w-full sm:w-auto rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 text-center"
           >
             Imprimir
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+            className="w-full sm:w-auto rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 text-center"
           >
             Entendido
           </button>

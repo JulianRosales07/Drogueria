@@ -153,8 +153,8 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
   }, [selectedCamera])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-      <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-2 sm:p-4 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm max-h-[92vh] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
           <div className="flex items-center gap-2">

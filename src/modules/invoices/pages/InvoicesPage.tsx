@@ -374,11 +374,11 @@ export function InvoicesPage() {
 
       {/* ===== Modal de detalle de factura ===== */}
       {viewingSale && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="mb-1 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+          <div className="flex max-h-[92vh] sm:max-h-[90vh] w-full max-w-lg flex-col rounded-2xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900 overflow-hidden">
+            <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
                   Factura {invoiceNumber(viewingSale.id)}
                 </h2>
                 {renderSaleStatus(viewingSale.status)}
@@ -390,7 +390,7 @@ export function InvoicesPage() {
                 ✕
               </button>
             </div>
-            <p className="mb-4 text-xs text-slate-400">
+            <p className="mb-3 text-xs text-slate-400">
               {formatDateTime(viewingSale.created_at)}
               {' · '}
               {viewingSale.customers?.full_name || 'Venta de mostrador'}
@@ -398,8 +398,8 @@ export function InvoicesPage() {
             </p>
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-              <div className="rounded-lg border border-slate-200 dark:border-slate-800">
-                <table className="w-full text-sm">
+              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                <table className="w-full min-w-[320px] text-sm">
                   <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium">Producto</th>
@@ -502,7 +502,7 @@ export function InvoicesPage() {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-col sm:flex-row gap-2">
               {viewingSale.status !== 'RETURNED' && viewingSale.status !== 'CANCELLED' && (
                 <button
                   onClick={() => {
@@ -510,20 +510,20 @@ export function InvoicesPage() {
                     setViewingSale(null)
                     setReturningSale(target)
                   }}
-                  className="flex-1 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700"
+                  className="w-full sm:flex-1 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700 text-center"
                 >
                   🔄 Devolver productos
                 </button>
               )}
               <button
                 onClick={() => handleReprint(viewingSale)}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                className="w-full sm:flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 text-center"
               >
                 🖨️ Reimprimir
               </button>
               <button
                 onClick={() => setViewingSale(null)}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="w-full sm:w-auto rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 text-center"
               >
                 Cerrar
               </button>

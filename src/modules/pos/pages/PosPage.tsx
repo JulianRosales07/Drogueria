@@ -1075,10 +1075,10 @@ export function PosPage() {
 
       {/* ===== Modal de ventas del día ===== */}
       {showDailySales && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="flex h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Ventas del día</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+          <div className="flex h-[92vh] sm:h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900 overflow-hidden">
+            <div className="mb-3 sm:mb-4 flex shrink-0 items-center justify-between">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">Ventas del día</h2>
               <button
                 onClick={() => setShowDailySales(false)}
                 className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
@@ -1143,7 +1143,7 @@ export function PosPage() {
                 )
 
                 return (
-                  <div className="flex min-h-0 flex-1 flex-col">
+                  <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
                     <p className="mb-3 text-xs text-slate-400">
                       {currentRegister
                         ? `Ventas del turno actual, abierto desde las ${formatTime(currentRegister.openedAt)}`
@@ -1152,31 +1152,31 @@ export function PosPage() {
                           : 'No hay ningún turno de caja registrado hoy'}
                     </p>
 
-                    <div className="mb-4 grid grid-cols-3 gap-3">
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
+                    <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 sm:p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
                         <p className="text-xs text-slate-500 dark:text-slate-400">Ventas</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">{scopedSales.length}</p>
+                        <p className="mt-0.5 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{scopedSales.length}</p>
                       </div>
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 sm:p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
                         <p className="text-xs text-slate-500 dark:text-slate-400">Unidades</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">{itemsToday}</p>
+                        <p className="mt-0.5 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{itemsToday}</p>
                       </div>
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 sm:p-3 text-center dark:border-slate-800 dark:bg-slate-800/60">
                         <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">{money(totalToday)}</p>
+                        <p className="mt-0.5 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{money(totalToday)}</p>
                       </div>
                     </div>
 
                     <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">
                       Productos vendidos
                     </h3>
-                    <div className="mb-4 max-h-40 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div className="mb-4 max-h-40 overflow-y-auto overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
                       {productSummary.length === 0 ? (
                         <div className="py-6 text-center text-sm text-slate-400">
                           Aún no se ha vendido ningún producto.
                         </div>
                       ) : (
-                        <table className="w-full text-sm">
+                        <table className="w-full min-w-[320px] text-sm">
                           <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                             <tr>
                               <th className="px-3 py-2 text-left font-medium">Producto</th>
@@ -1214,13 +1214,13 @@ export function PosPage() {
                     <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">
                       Tickets
                     </h3>
-                    <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
                       {scopedSales.length === 0 ? (
                         <div className="py-10 text-center text-sm text-slate-400">
                           Aún no hay ventas registradas.
                         </div>
                       ) : (
-                        <table className="w-full text-sm">
+                        <table className="w-full min-w-[400px] text-sm">
                           <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                             <tr>
                               <th className="px-3 py-2 text-left font-medium">Factura</th>
@@ -1279,10 +1279,10 @@ export function PosPage() {
 
       {/* ===== Modal de detalle de una venta (factura + productos vendidos) ===== */}
       {viewingSale && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="mb-1 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+          <div className="flex max-h-[92vh] sm:max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900 overflow-hidden">
+            <div className="mb-1 flex shrink-0 items-center justify-between">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
                 Factura #{viewingSale.id.substring(0, 8).toUpperCase()}
               </h2>
               <button
@@ -1292,7 +1292,7 @@ export function PosPage() {
                 ✕
               </button>
             </div>
-            <p className="mb-4 text-xs text-slate-400">
+            <p className="mb-3 text-xs text-slate-400">
               {new Date(viewingSale.created_at).toLocaleString('es-CO', {
                 dateStyle: 'medium',
                 timeStyle: 'short',
@@ -1301,8 +1301,8 @@ export function PosPage() {
               {viewingSale.customers?.full_name || 'Venta de mostrador'}
             </p>
 
-            <div className="flex-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
-              <table className="w-full text-sm">
+            <div className="flex-1 overflow-y-auto overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+              <table className="w-full min-w-[320px] text-sm">
                 <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium">Producto</th>
@@ -1371,7 +1371,7 @@ export function PosPage() {
 
             <button
               onClick={() => setViewingSale(null)}
-              className="mt-4 w-full rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+              className="mt-4 w-full rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 text-center"
             >
               Cerrar
             </button>
@@ -1381,10 +1381,10 @@ export function PosPage() {
 
       {/* ===== Modal de selección de presentación ===== */}
       {presentationPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{presentationPicker.name}</h2>
-            <p className="mt-1 text-sm text-slate-400">Elige la presentación a vender</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900 max-h-[92vh] overflow-y-auto">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">{presentationPicker.name}</h2>
+            <p className="mt-1 text-xs sm:text-sm text-slate-400">Elige la presentación a vender</p>
 
             <div className="mt-4 space-y-2">
               {getPresentations(presentationPicker).map((presentation) => (
@@ -1398,22 +1398,22 @@ export function PosPage() {
                     getReservedBaseQuantity(presentationPicker.id) + presentation.factor >
                     presentationPicker.stock
                   }
-                  className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-left transition hover:border-blue-500 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-blue-500/10"
+                  className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3.5 py-2.5 sm:px-4 sm:py-3 text-left transition hover:border-blue-500 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-blue-500/10"
                 >
                   <div>
-                    <p className="font-medium text-slate-900 dark:text-white">{presentation.label}</p>
+                    <p className="font-medium text-slate-900 dark:text-white text-sm">{presentation.label}</p>
                     <p className="text-xs text-slate-400">
                       {presentation.factor > 1 ? `${presentation.factor} unidades` : '1 unidad'}
                     </p>
                   </div>
-                  <span className="text-lg font-semibold text-slate-900 dark:text-white">{money(presentation.price)}</span>
+                  <span className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">{money(presentation.price)}</span>
                 </button>
               ))}
             </div>
 
             <button
               onClick={() => setPresentationPicker(null)}
-              className="mt-4 w-full rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+              className="mt-4 w-full rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 text-center"
             >
               Cancelar
             </button>
@@ -1423,11 +1423,11 @@ export function PosPage() {
 
       {/* ===== Modal de recibo ===== */}
       {showReceipt && completedSale && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+          <div className="flex max-h-[92vh] w-full max-w-md flex-col rounded-2xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900 overflow-hidden">
+            <div className="mb-3 sm:mb-4 flex shrink-0 items-center justify-between">
+              <h2 className="flex items-center gap-2 text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
+                <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 text-sm">
                   ✓
                 </span>
                 Venta completada
@@ -1444,7 +1444,7 @@ export function PosPage() {
               </button>
             </div>
 
-            <div className="mb-4 max-h-[55vh] overflow-auto rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
+            <div className="mb-4 flex-1 overflow-auto rounded-xl bg-slate-50 p-2.5 sm:p-3 dark:bg-slate-800">
               <Receipt
                 ref={receiptRef}
                 saleId={completedSale.id}
@@ -1475,22 +1475,22 @@ export function PosPage() {
               />
             </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={handlePrint}
-                className="flex-1 rounded-lg bg-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
-              >
-                🖨️ Imprimir
-              </button>
+            <div className="flex shrink-0 flex-col-reverse sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={() => {
                   setShowReceipt(false)
                   setCompletedSale(null)
                   searchInputRef.current?.focus()
                 }}
-                className="rounded-lg px-4 py-2.5 font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="w-full sm:flex-1 rounded-lg px-4 py-2.5 font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-center text-sm"
               >
                 Cerrar
+              </button>
+              <button
+                onClick={handlePrint}
+                className="w-full sm:flex-1 rounded-lg bg-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-center text-sm"
+              >
+                🖨️ Imprimir
               </button>
             </div>
           </div>

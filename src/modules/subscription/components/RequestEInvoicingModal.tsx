@@ -62,11 +62,11 @@ export function RequestEInvoicingModal({ open, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white shadow-xl dark:bg-slate-900">
-        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] flex flex-col rounded-2xl bg-white shadow-2xl dark:bg-slate-900 overflow-hidden">
+        <div className="flex shrink-0 items-start justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
               Solicitar facturación electrónica
             </h2>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
@@ -81,7 +81,7 @@ export function RequestEInvoicingModal({ open, onClose }: Props) {
           </button>
         </div>
 
-        <div className="space-y-4 px-6 py-5">
+        <div className="flex-1 overflow-y-auto space-y-4 px-4 py-4 sm:px-6 sm:py-5">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-800 dark:bg-slate-800/60">
             <p className="font-medium text-slate-700 dark:text-slate-200">
               {user?.storeName ?? 'Tu establecimiento'}
@@ -134,11 +134,11 @@ export function RequestEInvoicingModal({ open, onClose }: Props) {
           </p>
         </div>
 
-        <div className="flex flex-wrap justify-end gap-2.5 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+        <div className="flex shrink-0 flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-2.5 border-t border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="w-full sm:w-auto rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-center"
           >
             Cancelar
           </button>
@@ -146,7 +146,7 @@ export function RequestEInvoicingModal({ open, onClose }: Props) {
             <button
               type="button"
               onClick={handleWhatsApp}
-              className="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="w-full sm:w-auto rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 text-center"
             >
               Enviar por WhatsApp
             </button>
@@ -154,7 +154,7 @@ export function RequestEInvoicingModal({ open, onClose }: Props) {
           <button
             type="button"
             onClick={handleEmail}
-            className="rounded-md bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+            className="w-full sm:w-auto rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 text-center"
           >
             Enviar solicitud
           </button>

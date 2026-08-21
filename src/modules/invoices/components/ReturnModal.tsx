@@ -147,12 +147,12 @@ export function ReturnModal({ sale, onClose, onSuccess }: ReturnModalProps) {
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+      <div className="flex max-h-[92vh] sm:max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl dark:bg-slate-900 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <span>🔄</span> Devolución de Productos — Factura {invoiceNumber(sale.id)}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -169,13 +169,13 @@ export function ReturnModal({ sale, onClose, onSuccess }: ReturnModalProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 space-y-4 sm:space-y-5">
           {returnsQuery.isLoading ? (
             <div className="py-6 text-center text-sm text-slate-400">Consultando historial de la venta…</div>
           ) : null}
 
           {/* Quick buttons */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Selecciona los productos a devolver
             </p>
@@ -203,8 +203,8 @@ export function ReturnModal({ sale, onClose, onSuccess }: ReturnModalProps) {
           </div>
 
           {/* Table */}
-          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-            <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+            <table className="w-full min-w-[560px] text-left text-sm">
               <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500 dark:bg-slate-800/80 dark:text-slate-400">
                 <tr>
                   <th className="px-3.5 py-2.5">Producto</th>
@@ -318,12 +318,12 @@ export function ReturnModal({ sale, onClose, onSuccess }: ReturnModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+        <div className="flex shrink-0 flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 border-t border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           <button
             type="button"
             onClick={onClose}
             disabled={returnMutation.isPending}
-            className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition"
+            className="w-full sm:w-auto rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition text-center"
           >
             Cancelar
           </button>
@@ -331,7 +331,7 @@ export function ReturnModal({ sale, onClose, onSuccess }: ReturnModalProps) {
             type="button"
             onClick={() => returnMutation.mutate()}
             disabled={totalItemsToReturn === 0 || !notes.trim() || returnMutation.isPending}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-center"
           >
             {returnMutation.isPending ? (
               <>

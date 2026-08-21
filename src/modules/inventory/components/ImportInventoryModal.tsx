@@ -70,10 +70,10 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+      <div className="flex w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex-col rounded-2xl bg-white shadow-2xl dark:bg-slate-900 overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
+          <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
             Importar inventario desde Excel
           </h2>
           <button
@@ -84,10 +84,10 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
           </button>
         </div>
 
-        <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           {step === 'select' && (
-            <div className="space-y-5">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="space-y-4 sm:space-y-5">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4 dark:border-slate-700 dark:bg-slate-800/60">
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
                   1. Descarga la plantilla
                 </p>
@@ -99,13 +99,13 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
                 <button
                   type="button"
                   onClick={downloadInventoryTemplate}
-                  className="mt-3 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                  className="mt-3 w-full sm:w-auto rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 text-center"
                 >
                   ⬇️ Descargar plantilla (.xlsx)
                 </button>
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4 dark:border-slate-700 dark:bg-slate-800/60">
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
                   2. Sube el archivo completado
                 </p>
@@ -117,7 +117,7 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
                   type="file"
                   accept=".xlsx,.xls"
                   onChange={handleFileSelected}
-                  className="mt-3 block w-full text-sm text-slate-600 dark:text-slate-300"
+                  className="mt-3 block w-full text-sm text-slate-600 dark:text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-300"
                 />
               </div>
             </div>
@@ -129,7 +129,7 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
                 Archivo: <span className="font-medium">{fileName}</span>
               </p>
 
-              <div className="flex gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-500/10">
                   <p className="text-2xl font-semibold text-emerald-700 dark:text-emerald-400">
                     {parseResult.rows.length}
@@ -145,8 +145,8 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
               </div>
 
               {parseResult.errors.length > 0 && (
-                <div className="max-h-40 overflow-y-auto rounded-lg border border-red-200 dark:border-red-800">
-                  <table className="w-full text-sm">
+                <div className="max-h-40 overflow-y-auto overflow-x-auto rounded-lg border border-red-200 dark:border-red-800">
+                  <table className="w-full min-w-[300px] text-sm">
                     <thead className="bg-red-50 dark:bg-red-500/10">
                       <tr>
                         <th className="px-3 py-2 text-left text-xs font-medium text-red-700 dark:text-red-400">Fila</th>
@@ -166,8 +166,8 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
               )}
 
               {parseResult.rows.length > 0 && (
-                <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700">
-                  <table className="w-full text-sm">
+                <div className="max-h-48 overflow-y-auto overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                  <table className="w-full min-w-[400px] text-sm">
                     <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800">
                       <tr>
                         <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">SKU</th>
@@ -220,7 +220,7 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
 
           {step === 'done' && summary && (
             <div className="space-y-4">
-              <div className="flex gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-500/10">
                   <p className="text-2xl font-semibold text-emerald-700 dark:text-emerald-400">
                     {summary.created}
@@ -238,8 +238,8 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
               </div>
 
               {summary.failed > 0 && (
-                <div className="max-h-40 overflow-y-auto rounded-lg border border-red-200 dark:border-red-800">
-                  <table className="w-full text-sm">
+                <div className="max-h-40 overflow-y-auto overflow-x-auto rounded-lg border border-red-200 dark:border-red-800">
+                  <table className="w-full min-w-[300px] text-sm">
                     <thead className="bg-red-50 dark:bg-red-500/10">
                       <tr>
                         <th className="px-3 py-2 text-left text-xs font-medium text-red-700 dark:text-red-400">SKU</th>
@@ -263,19 +263,19 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+        <div className="flex shrink-0 flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 border-t border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           {step === 'preview' && (
             <>
               <button
                 onClick={resetState}
-                className="rounded-md px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="w-full sm:w-auto rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-center"
               >
                 Elegir otro archivo
               </button>
               <button
                 onClick={handleConfirmImport}
                 disabled={parseResult?.rows.length === 0}
-                className="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+                className="w-full sm:w-auto rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 text-center"
               >
                 Importar {parseResult?.rows.length ?? 0} productos
               </button>
@@ -285,7 +285,7 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
           {step === 'done' && (
             <button
               onClick={handleClose}
-              className="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+              className="w-full sm:w-auto rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 text-center"
             >
               Cerrar
             </button>
@@ -295,7 +295,7 @@ export function ImportInventoryModal({ open, onClose }: ImportInventoryModalProp
             <button
               onClick={handleClose}
               disabled={step === 'importing'}
-              className="rounded-md px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="w-full sm:w-auto rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800 text-center"
             >
               Cancelar
             </button>

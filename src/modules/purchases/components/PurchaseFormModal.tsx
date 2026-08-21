@@ -325,11 +325,11 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-xl bg-white shadow-xl dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+      <div className="flex max-h-[92vh] sm:max-h-[90vh] w-full max-w-5xl flex-col rounded-2xl bg-white shadow-2xl dark:bg-slate-900 overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           <div>
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
+            <h2 className="flex items-center gap-2 text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
               {isEditing ? '✏️ Editar Compra' : '🛒 Registrar Entrada de Compra / Mercancía'}
             </h2>
             {isEditing && (
@@ -347,7 +347,7 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
           </button>
         </div>
 
-        <div className="grid flex-1 gap-6 overflow-y-auto p-6 md:grid-cols-[1fr_1.8fr]">
+        <div className="grid flex-1 gap-6 overflow-y-auto p-4 sm:p-6 grid-cols-1 md:grid-cols-[1fr_1.8fr]">
           {/* Panel izquierdo: datos generales */}
           <div className="space-y-4 border-slate-200 pr-0 dark:border-slate-800 md:border-r md:pr-6">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -599,30 +599,30 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
               </div>
             )}
 
-            {/* Tabla de ítems (cantidad, costo y precio de venta editables) */}
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="bg-slate-100 font-semibold uppercase text-slate-500 dark:bg-slate-800">
+            {/* Lista de productos agregados */}
+            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+              <table className="w-full min-w-[640px] text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  <tr>
                     <th className="p-3">Producto</th>
                     <th className="p-3">Presentación</th>
-                    <th className="p-3 w-20">Cantidad</th>
-                    <th className="p-3 w-28">Costo</th>
-                    <th className="p-3 w-28">Precio venta</th>
+                    <th className="p-3">Cantidad</th>
+                    <th className="p-3">Costo</th>
+                    <th className="p-3">Nuevo Precio Venta</th>
                     <th className="p-3">Subtotal</th>
-                    <th className="p-3"></th>
+                    <th className="p-3 w-10"></th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {items.map((item, index) => (
-                    <tr key={`${item.productId}-${item.unitId ?? 'base'}`} className="border-t border-slate-200 dark:border-slate-800">
+                    <tr key={`${item.productId}-${item.unitId ?? 'base'}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                       <td className="p-3">
                         <p className="font-medium text-slate-900 dark:text-white">{item.productName}</p>
                         {item.productSku && (
                           <p className="text-[10px] text-slate-400">SKU: {item.productSku}</p>
                         )}
                       </td>
-                      <td className="p-3">
+                      <td className="p-3 text-slate-500 dark:text-slate-400">
                         {item.unitName}
                         {item.unitFactor > 1 && (
                           <span className="text-[10px] text-slate-400"> (x{item.unitFactor})</span>
@@ -632,18 +632,18 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
                         <input
                           type="number"
                           min="1"
+                          className="w-16 rounded border border-slate-200 bg-white px-2 py-1 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                           value={item.quantity}
                           onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
-                          className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         />
                       </td>
                       <td className="p-3">
                         <input
                           type="number"
                           min="0"
+                          className="w-20 rounded border border-slate-200 bg-white px-2 py-1 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                           value={item.cost}
                           onChange={(e) => updateItem(index, { cost: Number(e.target.value) })}
-                          className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         />
                       </td>
                       <td className="p-3">
@@ -651,12 +651,12 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
                           type="number"
                           min="0"
                           placeholder="Sin cambio"
+                          className="w-24 rounded border border-slate-200 bg-white px-2 py-1 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white placeholder:text-slate-400"
                           value={item.salePrice}
                           onChange={(e) => updateItem(index, { salePrice: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         />
                         {currentPriceOf(item) !== null && (
-                          <span className="mt-0.5 block text-[10px] text-slate-400">
+                          <span className="ml-1.5 text-[10px] text-slate-400">
                             Actual: {money(currentPriceOf(item)!)}
                           </span>
                         )}
@@ -669,7 +669,6 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
                           type="button"
                           onClick={() => handleRemoveItem(index)}
                           className="text-red-500 hover:text-red-700"
-                          title="Quitar de la compra"
                         >
                           ✕
                         </button>
@@ -694,11 +693,11 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+        <div className="flex shrink-0 flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 border-t border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="w-full sm:w-auto rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-center"
           >
             Cancelar
           </button>
@@ -706,7 +705,7 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
             type="button"
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending || items.length === 0 || !selectedSupplierId}
-            className="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+            className="w-full sm:w-auto rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 text-center"
           >
             {saveMutation.isPending
               ? 'Procesando...'

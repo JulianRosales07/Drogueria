@@ -193,15 +193,15 @@ export function UserFormModal({ open, user, onClose }: Props) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-700">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
               {isEditing ? 'Editar usuario' : 'Nuevo usuario'}
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               {isEditing ? 'Modifica los datos del usuario y sus permisos.' : 'Completa los datos para crear un nuevo usuario.'}
             </p>
           </div>
@@ -215,214 +215,216 @@ export function UserFormModal({ open, user, onClose }: Props) {
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4 px-6 py-5">
-          {/* Nombre completo */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Nombre completo <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.fullName}
-              onChange={(e) => handleChange('fullName', e.target.value)}
-              placeholder="Ej: Juan Pérez"
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
-            />
-          </div>
-
-          {/* Email y Username */}
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden min-h-0">
+          <div className="flex-1 overflow-y-auto space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+            {/* Nombre completo */}
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Correo electrónico <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-                placeholder="correo@ejemplo.com"
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Usuario <span className="text-red-500">*</span>
+                Nombre completo <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={form.username}
-                onChange={(e) => handleChange('username', e.target.value)}
-                placeholder="usuario123"
+                value={form.fullName}
+                onChange={(e) => handleChange('fullName', e.target.value)}
+                placeholder="Ej: Juan Pérez"
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
               />
             </div>
-          </div>
 
-          {/* Contraseña */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Contraseña {!isEditing && <span className="text-red-500">*</span>}
-              {isEditing && <span className="text-xs text-slate-400 ml-1">(dejar en blanco para no cambiar)</span>}
-            </label>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(e) => handleChange('password', e.target.value)}
-              placeholder={isEditing ? 'Nueva contraseña (opcional)' : 'Mínimo 8 caracteres'}
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
-            />
-          </div>
-
-          {/* Rol y Estado */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Rol <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={form.roleId}
-                onChange={(e) => handleChange('roleId', e.target.value)}
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-              >
-                <option value="">Seleccionar rol</option>
-                {filteredRoles.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Estado
-              </label>
-              <select
-                value={form.status}
-                onChange={(e) => handleChange('status', e.target.value)}
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-              >
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Establecimiento (Tenancy) */}
-          {isCurrentUserSuperAdmin ? (
-            !isSuperAdminRole && (
+            {/* Email y Username */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Establecimiento Asignado <span className="text-red-500">*</span>
+                  Correo electrónico <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  placeholder="correo@ejemplo.com"
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Usuario <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.username}
+                  onChange={(e) => handleChange('username', e.target.value)}
+                  placeholder="usuario123"
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
+                />
+              </div>
+            </div>
+
+            {/* Contraseña */}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Contraseña {!isEditing && <span className="text-red-500">*</span>}
+                {isEditing && <span className="text-xs text-slate-400 ml-1">(dejar en blanco para no cambiar)</span>}
+              </label>
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) => handleChange('password', e.target.value)}
+                placeholder={isEditing ? 'Nueva contraseña (opcional)' : 'Mínimo 8 caracteres'}
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
+              />
+            </div>
+
+            {/* Rol y Estado */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Rol <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={form.storeId}
-                  onChange={(e) => handleChange('storeId', e.target.value)}
+                  value={form.roleId}
+                  onChange={(e) => handleChange('roleId', e.target.value)}
                   className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                 >
-                  <option value="">Seleccionar establecimiento</option>
-                  {stores.map((s) => (
-                    <option key={s.id} value={s.id} disabled={!s.isActive}>
-                      {s.type === 'STORE' ? '🏪 ' : '💊 '}
-                      {s.name} {!s.isActive && '(Inactiva)'}
+                  <option value="">Seleccionar rol</option>
+                  {filteredRoles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
                     </option>
                   ))}
                 </select>
               </div>
-            )
-          ) : (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Establecimiento Asignado
-              </label>
-              <div className="w-full rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                {currentUser?.storeType === 'STORE' ? '🏪 ' : '💊 '}
-                {currentUser?.storeName || 'Establecimiento actual'}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Estado
+                </label>
+                <select
+                  value={form.status}
+                  onChange={(e) => handleChange('status', e.target.value)}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                >
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          )}
 
-          {/* Permisos de Acceso a Páginas */}
-          <div className="pt-2">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Permisos de Acceso a Páginas
-              </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPermissions(ADMIN_DEFAULT_PAGES)}
-                  className="text-xs text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  Todas
-                </button>
-                <span className="text-slate-300 dark:text-slate-600">|</span>
-                <button
-                  type="button"
-                  onClick={() => setPermissions(OPERATOR_DEFAULT_PAGES)}
-                  className="text-xs text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  Operación
-                </button>
-                <span className="text-slate-300 dark:text-slate-600">|</span>
-                <button
-                  type="button"
-                  onClick={() => setPermissions([])}
-                  className="text-xs text-red-600 hover:underline dark:text-red-400"
-                >
-                  Ninguna
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto rounded-md border border-slate-200 p-3 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50">
-              {ALL_PAGES.map((page) => {
-                const isChecked = permissions.includes(page.key)
-                return (
-                  <label
-                    key={page.key}
-                    className={`flex items-center gap-2 rounded-md p-2 text-xs font-medium cursor-pointer transition border ${
-                      isChecked
-                        ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-300'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setPermissions((prev) => [...prev, page.key])
-                        } else {
-                          setPermissions((prev) => prev.filter((p) => p !== page.key))
-                        }
-                      }}
-                      className="rounded text-blue-600 focus:ring-blue-500 dark:bg-slate-900"
-                    />
-                    <span>
-                      {page.icon} {page.label}
-                    </span>
+            {/* Establecimiento (Tenancy) */}
+            {isCurrentUserSuperAdmin ? (
+              !isSuperAdminRole && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Establecimiento Asignado <span className="text-red-500">*</span>
                   </label>
-                )
-              })}
+                  <select
+                    value={form.storeId}
+                    onChange={(e) => handleChange('storeId', e.target.value)}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">Seleccionar establecimiento</option>
+                    {stores.map((s) => (
+                      <option key={s.id} value={s.id} disabled={!s.isActive}>
+                        {s.type === 'STORE' ? '🏪 ' : '💊 '}
+                        {s.name} {!s.isActive && '(Inactiva)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )
+            ) : (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Establecimiento Asignado
+                </label>
+                <div className="w-full rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  {currentUser?.storeType === 'STORE' ? '🏪 ' : '💊 '}
+                  {currentUser?.storeName || 'Establecimiento actual'}
+                </div>
+              </div>
+            )}
+
+            {/* Permisos de Acceso a Páginas */}
+            <div className="pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Permisos de Acceso a Páginas
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPermissions(ADMIN_DEFAULT_PAGES)}
+                    className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    Todas
+                  </button>
+                  <span className="text-slate-300 dark:text-slate-600">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setPermissions(OPERATOR_DEFAULT_PAGES)}
+                    className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    Operación
+                  </button>
+                  <span className="text-slate-300 dark:text-slate-600">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setPermissions([])}
+                    className="text-xs text-red-600 hover:underline dark:text-red-400"
+                  >
+                    Ninguna
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto rounded-md border border-slate-200 p-3 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50">
+                {ALL_PAGES.map((page) => {
+                  const isChecked = permissions.includes(page.key)
+                  return (
+                    <label
+                      key={page.key}
+                      className={`flex items-center gap-2 rounded-md p-2 text-xs font-medium cursor-pointer transition border ${
+                        isChecked
+                          ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-300'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setPermissions((prev) => [...prev, page.key])
+                          } else {
+                            setPermissions((prev) => prev.filter((p) => p !== page.key))
+                          }
+                        }}
+                        className="rounded text-blue-600 focus:ring-blue-500 dark:bg-slate-900"
+                      />
+                      <span>
+                        {page.icon} {page.label}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-700">
+          <div className="flex shrink-0 flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 border-t border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-700">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 text-center"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+              className="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 text-center"
             >
               {isLoading ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear usuario'}
             </button>
