@@ -41,7 +41,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
         type: store.type || 'PHARMACY',
         isActive: store.isActive,
         subscriptionStatus: store.subscriptionStatus || 'TRIAL',
-        trialDays: store.trialDays || 15,
+        trialDays: (store.daysRemaining !== null && store.daysRemaining !== undefined) ? store.daysRemaining : (store.trialDays || 15),
       })
     } else {
       setForm({
