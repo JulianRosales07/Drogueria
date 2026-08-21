@@ -1139,32 +1139,57 @@ export function PosPage() {
                     })
                   : []
 
-                const currentTotal = currentRegister?.salesTotalSoFar
-                const totalToday = currentTotal !== undefined ? currentTotal : scopedSales.reduce((sum, sale) => sum + sale.total, 0)
+                const scopedSalesTotal = scopedSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0)
+                const totalToday = scopedSalesTotal
                 const itemsToday = scopedSales.reduce(
-                  (sum, sale) => sum + sale.sale_items.reduce((iSum, item) => iSum + item.unit_quantity, 0),
+                  (sum, sale) => sum + (sale.sale_items || []).reduce((iSum, item) => iSum + item.unit_quantity, 0),
                   0,
                 )
 
-                // Desglose por método de pago (sincronizado con la caja del turno si está disponible)
-                const byMethod: Record<string, number> = currentRegister?.salesByPaymentMethodSoFar
-                  ? { ...currentRegister.salesByPaymentMethodSoFar }
-                  : { CASH: 0, CARD: 0, TRANSFER: 0, PENDING: 0, OTHER: 0 }
+                // Desglose por método de pago calculado de forma consistente con las ventas del turno
+                const byMethod: Record<string, number> = { CASH: 0, CARD: 0, TRANSFER: 0, PENDING: 0, OTHER: 0 }
+                for (const sale of scopedSales) {
+                  const saleTotal = Number(sale.total || 0)
+                  if (sale.payment_method_2) {
+                    const pm1 = sale.payment_method || 'CASH'
+                    const pm2 = sale.payment_method_2 || 'TRANSFER'
+                    let amt1 = sale.amount_paid_1 != null ? Number(sale.amount_paid_1) : null
+                    let amt2 = sale.amount_paid_2 != null ? Number(sale.amount_paid_2) : null
 
-                if (!currentRegister?.salesByPaymentMethodSoFar) {
-                  for (const sale of scopedSales) {
-                    if (sale.payment_method_2) {
-                      const pm1 = sale.payment_method || 'CASH'
-                      const pm2 = sale.payment_method_2 || 'TRANSFER'
-                      const amt1 = Number(sale.amount_paid_1 ?? 0)
-                      const amt2 = Number(sale.amount_paid_2 ?? 0)
-                      byMethod[pm1] = (byMethod[pm1] || 0) + amt1
-                      byMethod[pm2] = (byMethod[pm2] || 0) + amt2
+                    if ((amt1 === null || isNaN(amt1)) && (amt2 === null || isNaN(amt2))) {
+                      amt1 = saleTotal
+                      amt2 = 0
+                    } else if (amt1 === null || isNaN(amt1)) {
+                      amt1 = Math.max(0, saleTotal - (amt2 || 0))
+                    } else if (amt2 === null || isNaN(amt2)) {
+                      amt2 = Math.max(0, saleTotal - (amt1 || 0))
                     } else {
-                      const pm = sale.payment_method || 'CASH'
-                      byMethod[pm] = (byMethod[pm] || 0) + sale.total
+                      const sum = amt1 + amt2
+                      if (sum === 0 && saleTotal > 0) {
+                        amt1 = saleTotal
+                        amt2 = 0
+                      } else if (sum > 0 && Math.abs(sum - saleTotal) > 0.01) {
+                        const ratio1 = amt1 / sum
+                        amt1 = Math.round(saleTotal * ratio1 * 100) / 100
+                        amt2 = Math.round((saleTotal - amt1) * 100) / 100
+                      }
                     }
+
+                    if (byMethod[pm1] !== undefined) byMethod[pm1] += (amt1 || 0)
+                    else byMethod.OTHER += (amt1 || 0)
+
+                    if (byMethod[pm2] !== undefined) byMethod[pm2] += (amt2 || 0)
+                    else byMethod.OTHER += (amt2 || 0)
+                  } else {
+                    const pm = sale.payment_method || 'CASH'
+                    if (byMethod[pm] !== undefined) byMethod[pm] += saleTotal
+                    else byMethod.OTHER += saleTotal
                   }
+                }
+
+                // Redondear métodos
+                for (const k of Object.keys(byMethod)) {
+                  byMethod[k] = Math.round((byMethod[k] || 0) * 100) / 100
                 }
 
                 // Agrupar por producto + presentación vendida
