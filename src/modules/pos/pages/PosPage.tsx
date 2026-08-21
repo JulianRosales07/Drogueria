@@ -16,6 +16,7 @@ import {
 import { listCustomers } from '../../../services/api/customers'
 import { getCurrentCashRegister, listCashRegisterHistory } from '../../../services/api/cash-registers'
 import { useReceiptConfig } from '../../../hooks/useReceiptConfig'
+import { useUiStore } from '../../../store/ui-store'
 
 type CartItem = {
   productId: string
@@ -84,6 +85,7 @@ type ProductSalesSummary = {
 }
 
 export function PosPage() {
+  const user = useUiStore((state) => state.user)
   const queryClient = useQueryClient()
   const receiptRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -434,6 +436,10 @@ export function PosPage() {
   const customerNameRef = useRef<HTMLInputElement>(null)
 
   const handleConfirmPayment = () => {
+    if (user?.isTrialExpired) {
+      toast.error('🔴 El período de prueba ha finalizado. La aplicación está en modo solo lectura. Comunícate con soporte para habilitar el servicio completo.')
+      return
+    }
     if (!isRegisterOpen) {
       toast.error('Debes abrir la caja antes de cobrar')
       return
@@ -1037,7 +1043,7 @@ export function PosPage() {
                 <div className="flex items-center justify-end">
                   <button
                     onClick={handleConfirmPayment}
-                    disabled={!isRegisterOpen || cart.length === 0 || createSaleMutation.isPending}
+                    disabled={!isRegisterOpen || cart.length === 0 || createSaleMutation.isPending || user?.isTrialExpired}
                     className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 text-base font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Cobrar <span className="text-xs font-normal opacity-80">F9</span>
@@ -1072,7 +1078,7 @@ export function PosPage() {
               <div className="flex items-center justify-end">
                 <button
                   onClick={handleConfirmPayment}
-                  disabled={!isRegisterOpen || cart.length === 0 || createSaleMutation.isPending}
+                  disabled={!isRegisterOpen || cart.length === 0 || createSaleMutation.isPending || user?.isTrialExpired}
                   className="flex h-full min-h-14 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 text-lg font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:min-w-40"
                 >
                   Cobrar <span className="text-sm font-normal opacity-80">F9</span>

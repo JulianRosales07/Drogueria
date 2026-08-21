@@ -35,6 +35,7 @@ import {
   SUPER_ADMIN_ROLE,
   effectivePermissions,
 } from '../shared/utils/permissions'
+import { openSupportWhatsApp } from '../shared/utils/supportContact'
 
 type NavItem = {
   label: string
@@ -391,17 +392,70 @@ export function AppShell() {
         </aside>
 
         <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          {/* Banner de prueba vencida o próxima a vencer */}
+          {!isSuperAdmin && user?.isTrialExpired ? (
+            <div className="border-b border-red-200 bg-red-50 px-4 py-2.5 text-red-900 dark:border-red-900/50 dark:bg-red-950/60 dark:text-red-200 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm z-30 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-base shrink-0">⚠️</span>
+                <span className="leading-tight">
+                  <strong>Período de prueba finalizado:</strong> La aplicación está en <u>modo solo lectura</u> (no es posible registrar ventas ni compras).
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => openSupportWhatsApp(user?.storeName, user?.fullName, 'reactivar el sistema y plan')}
+                className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-red-700 transition shrink-0"
+              >
+                <span>💬 Contactar a Soporte</span>
+              </button>
+            </div>
+          ) : !isSuperAdmin && user?.subscriptionStatus === 'TRIAL' && (user?.daysRemaining ?? 99) <= 3 ? (
+            <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/50 dark:text-amber-200 flex flex-wrap items-center justify-between gap-2 text-xs z-30 shrink-0">
+              <span>
+                ⏳ Te quedan <strong>{user?.daysRemaining} {user?.daysRemaining === 1 ? 'día' : 'días'}</strong> de prueba gratuita. Contacta a soporte para continuar operando sin interrupciones.
+              </span>
+              <button
+                type="button"
+                onClick={() => openSupportWhatsApp(user?.storeName, user?.fullName, 'activar el plan')}
+                className="font-semibold underline hover:text-amber-700 dark:hover:text-amber-300"
+              >
+                Contactar Soporte →
+              </button>
+            </div>
+          ) : null}
+
           {!isPos ? (
-            <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 md:px-6">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="rounded-md border border-slate-200 p-1.5 dark:border-slate-700 lg:hidden"
-                  onClick={toggleSidebar}
-                >
-                  <MenuIcon className="h-4 w-4" />
-                </button>
-                <h2 className="text-lg font-semibold">{activeLabel}</h2>
+            <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 md:px-6 shrink-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="rounded-md border border-slate-200 p-1.5 dark:border-slate-700 lg:hidden"
+                    onClick={toggleSidebar}
+                  >
+                    <MenuIcon className="h-4 w-4" />
+                  </button>
+                  <h2 className="text-lg font-semibold">{activeLabel}</h2>
+                </div>
+
+                {/* Badge de suscripción en header */}
+                {!isSuperAdmin && (
+                  <div className="flex items-center gap-2">
+                    {user?.isTrialExpired ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-500/20 dark:text-red-300">
+                        🔴 Modo Solo Lectura
+                      </span>
+                    ) : user?.subscriptionStatus === 'TRIAL' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                        ⏳ Prueba ({user.daysRemaining ?? 0}d)
+                      </span>
+                    ) : user?.subscriptionStatus === 'ACTIVE' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                        💎 Plan Activo
+                      </span>
+                    ) : null}
+                  </div>
+                )}
               </div>
             </header>
           ) : (

@@ -2,12 +2,7 @@ import { useState } from 'react'
 import { useUiStore } from '../../../store/ui-store'
 import { useStoreContext } from '../../../hooks/useStoreContext'
 import { RequestEInvoicingModal } from '../components/RequestEInvoicingModal'
-
-/**
- * Página de suscripción al sistema. Los planes todavía no están disponibles
- * para contratar: se muestran como "Próximamente" y ningún botón dispara
- * cobros ni cambios de cuenta.
- */
+import { openSupportWhatsApp } from '../../../shared/utils/supportContact'
 
 type Plan = {
   id: string
@@ -16,19 +11,17 @@ type Plan = {
   price: string
   period: string
   features: string[]
-  /** Plan que el establecimiento está usando hoy */
   current?: boolean
-  /** Plan de pago aún no disponible para contratar */
   comingSoon?: boolean
 }
 
 const PLANS: Plan[] = [
   {
     id: 'gratis',
-    name: 'Gratis',
+    name: 'Básico / Prueba',
     tagline: 'Todo lo necesario para operar el día a día del negocio.',
     price: '$0',
-    period: 'siempre',
+    period: 'período de prueba',
     current: true,
     features: [
       'Punto de venta y facturación',
@@ -42,13 +35,14 @@ const PLANS: Plan[] = [
   },
   {
     id: 'plus',
-    name: 'Plus',
-    tagline: 'Para quien quiere decidir con números, no con intuición.',
+    name: 'Pro Permanente',
+    tagline: 'Para negocios que buscan operar con total tranquilidad y soporte continuo.',
     price: '$120.000',
     period: 'mensual',
     comingSoon: true,
     features: [
-      'Todo lo del plan Gratis',
+      'Todo lo del plan Básico',
+      'Sin límite de días de prueba',
       'Facturación electrónica incluida',
       'Rentabilidad y costo de lo vendido (COGS)',
       'Utilidad por venta, producto y turno',
@@ -61,19 +55,19 @@ const PLANS: Plan[] = [
 
 const FAQS: Array<{ question: string; answer: string }> = [
   {
-    question: '¿El plan Gratis tiene vencimiento?',
+    question: '¿Qué sucede cuando finaliza mi período de prueba?',
     answer:
-      'No. Es gratuito de forma permanente e incluye la operación completa del negocio: ventas, inventario, compras y caja.',
+      'Tu cuenta entra en modo consulta (solo lectura). Podrás ver todos tus datos, clientes e inventario, pero no podrás registrar nuevas ventas ni compras hasta que el Super Admin extienda o active tu suscripción.',
   },
   {
-    question: '¿Cuándo se podrá contratar el Plus?',
+    question: '¿Cómo puedo renovar o extender mis días de prueba?',
     answer:
-      'Todavía no hay fecha. Mientras tanto sus funciones están habilitadas para todos y el aviso saldrá en esta misma página.',
+      'Comunícate directamente con soporte a través del botón de WhatsApp en esta pantalla o en la barra superior para activar tu acceso.',
   },
   {
     question: '¿Cómo funciona la facturación electrónica?',
     answer:
-      'Está incluida en el plan Plus y en el plan Gratis se habilita como servicio aparte. Solicítala con el botón y te contactamos para el trámite con la DIAN.',
+      'Está disponible bajo solicitud. Contáctanos con el botón de solicitud para iniciar el trámite con la DIAN.',
   },
 ]
 
@@ -82,29 +76,60 @@ export function SubscriptionPage() {
   const { storeTerm } = useStoreContext()
   const [requestOpen, setRequestOpen] = useState(false)
 
+  const isTrial = user?.subscriptionStatus === 'TRIAL'
+  const isExpired = user?.isTrialExpired || user?.subscriptionStatus === 'EXPIRED'
+  const isActive = user?.subscriptionStatus === 'ACTIVE'
+
   return (
     <div className="space-y-6">
       {/* Encabezado */}
       <header className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
-              Próximamente
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${
+              isActive
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                : isExpired
+                ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300'
+                : 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
+            }`}>
+              {isActive ? '💎 Plan Permanente Activo' : isExpired ? '🔴 Período de Prueba Finalizado' : '⏳ Período de Prueba Activo'}
             </span>
             <h1 className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
-              Planes de suscripción
+              Estado de Suscripción y Acceso
             </h1>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Tu {storeTerm.toLowerCase()} está en el plan Gratis, que no vence. El plan Plus todavía no
-              se puede contratar: mientras lo preparamos, sus funciones siguen habilitadas para todos.
+              {isActive
+                ? `Tu ${storeTerm.toLowerCase()} cuenta con acceso completo y permanente a todas las funciones operativas.`
+                : isExpired
+                ? `El período de prueba de tu ${storeTerm.toLowerCase()} ha finalizado. El sistema se encuentra en modo solo lectura.`
+                : `Tu ${storeTerm.toLowerCase()} se encuentra en período de prueba gratuito (${user?.daysRemaining ?? 0} días restantes).`}
             </p>
+
+            {(isTrial || isExpired) && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => openSupportWhatsApp(user?.storeName, user?.fullName, 'activar la suscripción')}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 shadow-sm"
+                >
+                  <span>💬 Contactar a Soporte por WhatsApp</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Plan actual</p>
-            <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">Gratis</p>
-            <p className="text-[11px] text-slate-400">
-              {user?.storeName ?? storeTerm} · sin fecha de vencimiento
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60 min-w-[220px]">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Estado actual</p>
+            <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+              {isActive ? 'Plan Permanente' : isExpired ? 'Prueba Vencida' : 'Prueba Gratuita'}
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              {isActive
+                ? 'Sin fecha de vencimiento'
+                : isExpired
+                ? 'Modo solo lectura activado'
+                : `${user?.daysRemaining ?? 0} días restantes` + (user?.trialEndsAt ? ` (hasta ${new Date(user.trialEndsAt).toLocaleDateString('es-CO')})` : '')}
             </p>
           </div>
         </div>

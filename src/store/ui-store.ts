@@ -2,7 +2,9 @@ import { create } from 'zustand'
 
 type ThemeMode = 'light' | 'dark'
 
-type AuthUser = {
+export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED'
+
+export type AuthUser = {
   id: string
   email: string
   username: string
@@ -11,6 +13,10 @@ type AuthUser = {
   storeId?: string | null
   storeName?: string | null
   storeType?: 'PHARMACY' | 'STORE' | null
+  subscriptionStatus?: SubscriptionStatus | null
+  trialEndsAt?: string | null
+  daysRemaining?: number | null
+  isTrialExpired?: boolean
   permissions?: string[] | null
 }
 

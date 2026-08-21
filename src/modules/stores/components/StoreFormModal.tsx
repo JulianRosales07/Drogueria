@@ -26,6 +26,8 @@ export function StoreFormModal({ open, store, onClose }: Props) {
     email: '',
     type: 'PHARMACY' as 'PHARMACY' | 'STORE',
     isActive: true,
+    subscriptionStatus: 'TRIAL' as 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED',
+    trialDays: 15,
   })
 
   useEffect(() => {
@@ -38,6 +40,8 @@ export function StoreFormModal({ open, store, onClose }: Props) {
         email: store.email || '',
         type: store.type || 'PHARMACY',
         isActive: store.isActive,
+        subscriptionStatus: store.subscriptionStatus || 'TRIAL',
+        trialDays: store.trialDays || 15,
       })
     } else {
       setForm({
@@ -48,6 +52,8 @@ export function StoreFormModal({ open, store, onClose }: Props) {
         email: '',
         type: 'PHARMACY',
         isActive: true,
+        subscriptionStatus: 'TRIAL',
+        trialDays: 15,
       })
     }
   }, [store, open])
@@ -94,6 +100,8 @@ export function StoreFormModal({ open, store, onClose }: Props) {
       phone: form.phone || null,
       email: form.email || null,
       type: form.type,
+      subscriptionStatus: form.subscriptionStatus,
+      trialDays: Number(form.trialDays) || 15,
     }
 
     if (isEditing) {
@@ -219,8 +227,67 @@ export function StoreFormModal({ open, store, onClose }: Props) {
               />
             </div>
 
+            {/* Suscripción y Período de Prueba */}
+            <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3.5 dark:border-blue-900/50 dark:bg-blue-950/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                  Plan y Acceso
+                </span>
+                {store?.trialEndsAt && store.subscriptionStatus === 'TRIAL' && (
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                    Vence: {new Date(store.trialEndsAt).toLocaleDateString('es-CO')}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    Estado de Suscripción
+                  </label>
+                  <select
+                    value={form.subscriptionStatus}
+                    onChange={(e) => handleChange('subscriptionStatus', e.target.value)}
+                    className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="TRIAL">⏳ Período de Prueba (Trial)</option>
+                    <option value="ACTIVE">💎 Activo Permanente / Pagado</option>
+                    <option value="EXPIRED">🔴 Prueba Vencida (Solo Lectura)</option>
+                    <option value="SUSPENDED">⏸️ Suspendido</option>
+                  </select>
+                </div>
+
+                {form.subscriptionStatus === 'TRIAL' && (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                      Días de prueba {isEditing ? '(Configurar días)' : 'a otorgar'}
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={form.trialDays}
+                        onChange={(e) => handleChange('trialDays', e.target.value)}
+                        placeholder="15"
+                        className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                      />
+                      <span className="text-xs text-slate-500 dark:text-slate-400">días</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {form.subscriptionStatus === 'TRIAL'
+                  ? 'Al finalizar los días de prueba, el establecimiento entrará en modo solo lectura (no podrá registrar ventas ni compras).'
+                  : form.subscriptionStatus === 'ACTIVE'
+                  ? 'Acceso operativo total sin restricción de días de prueba.'
+                  : 'El establecimiento está bloqueado para nuevas ventas y compras.'}
+              </p>
+            </div>
+
             {isEditing && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
                   id="isActive"
@@ -229,7 +296,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
                   className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
                 <label htmlFor="isActive" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Establecimiento Activo (Permite accesos y operaciones)
+                  Establecimiento Activo (Habilitar inicio de sesión)
                 </label>
               </div>
             )}
