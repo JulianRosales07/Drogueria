@@ -1094,12 +1094,12 @@ export function PosPage() {
       {/* ===== Modal de ventas del día ===== */}
       {showDailySales && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
-          <div className="flex h-[92vh] sm:h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900 overflow-hidden">
+          <div className="flex h-[92vh] sm:h-[88vh] w-full max-w-3xl flex-col rounded-2xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900 overflow-hidden">
             <div className="mb-3 sm:mb-4 flex shrink-0 items-center justify-between">
               <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">Ventas del día</h2>
               <button
                 onClick={() => setShowDailySales(false)}
-                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
               >
                 ✕
               </button>

@@ -186,11 +186,11 @@ export function CashRegisterPage() {
                 <p className="text-xs text-slate-400">{current.salesCountSoFar} venta(s)</p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
-                <p className="text-sm text-slate-500 dark:text-slate-400">Efectivo esperado</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
-                  {money(current.openingAmount + current.cashSalesTotalSoFar)}
+                <p className="text-sm text-slate-500 dark:text-slate-400">Total esperado del turno</p>
+                <p className="mt-2 text-2xl font-semibold text-blue-600 dark:text-blue-400">
+                  {money(current.openingAmount + current.salesTotalSoFar)}
                 </p>
-                <p className="text-xs text-slate-400">Solo ventas en efectivo</p>
+                <p className="text-xs text-slate-400">Base + Todas las ventas</p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
                 <p className="text-sm text-slate-500 dark:text-slate-400">Costo de lo vendido</p>
@@ -249,77 +249,56 @@ export function CashRegisterPage() {
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Cerrar caja</h3>
                   <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                    Ingresa el monto para realizar el arqueo del turno.
+                    Ingresa el monto total para realizar el arqueo del turno.
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setClosingAmount(String(current.openingAmount + current.cashSalesTotalSoFar))}
-                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
-                    title="Base + Ventas en efectivo"
-                  >
-                    💵 Solo Efectivo: {money(current.openingAmount + current.cashSalesTotalSoFar)}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setClosingAmount(String(current.openingAmount + current.salesTotalSoFar))}
-                    className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                    title="Base + Todas las ventas (Efectivo + Transferencias + Tarjetas)"
-                  >
-                    ⚡ Total Consolidado: {money(current.openingAmount + current.salesTotalSoFar)}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setClosingAmount(String(current.openingAmount + current.salesTotalSoFar))}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                >
+                  ⚡ Usar valor esperado: {money(current.openingAmount + current.salesTotalSoFar)}
+                </button>
               </div>
 
               {/* Guía de cálculo completa */}
               <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3.5 text-xs dark:border-slate-800 dark:bg-slate-800/80 space-y-2">
-                <div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold text-slate-800 dark:text-slate-200">
-                    💵 1. Efectivo físico en cajón (Arqueo):
+                    📊 Total esperado del turno (Base + Todas las ventas):
                   </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                    <span className="rounded bg-slate-100 px-2 py-0.5 font-medium dark:bg-slate-700">
-                      Base ({money(current.openingAmount)})
-                    </span>
-                    <span>+</span>
-                    <span className="rounded bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                      Efectivo ventas ({money(current.cashSalesTotalSoFar)})
-                    </span>
-                    <span>=</span>
-                    <span className="rounded bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
-                      {money(current.openingAmount + current.cashSalesTotalSoFar)} en billetes/monedas
-                    </span>
-                  </div>
+                  <p className="text-sm font-bold text-blue-700 dark:text-blue-400">
+                    {money(current.openingAmount + current.salesTotalSoFar)}
+                  </p>
                 </div>
-
-                {((current.salesByPaymentMethodSoFar?.TRANSFER || 0) > 0 || (current.salesByPaymentMethodSoFar?.CARD || 0) > 0) && (
-                  <div className="border-t border-slate-100 pt-2 dark:border-slate-700/60">
-                    <p className="font-semibold text-slate-800 dark:text-slate-200">
-                      🏦 2. Pagos digitales / Bancos (No van al cajón físico):
-                    </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
-                      {(current.salesByPaymentMethodSoFar?.TRANSFER || 0) > 0 && (
-                        <span className="rounded bg-purple-50 px-2 py-0.5 font-medium text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
-                          Transferencias: {money(current.salesByPaymentMethodSoFar.TRANSFER)}
-                        </span>
-                      )}
-                      {(current.salesByPaymentMethodSoFar?.CARD || 0) > 0 && (
-                        <span className="rounded bg-blue-50 px-2 py-0.5 font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-                          Tarjetas: {money(current.salesByPaymentMethodSoFar.CARD)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="border-t border-slate-100 pt-2 dark:border-slate-700/60">
-                  <p className="font-semibold text-slate-800 dark:text-slate-200">
-                    📊 3. Total general del turno (Base + Todas las ventas):
-                  </p>
-                  <p className="mt-0.5 text-xs font-bold text-blue-700 dark:text-blue-400">
-                    {money(current.openingAmount + current.salesTotalSoFar)} (Efectivo + Transferencias + Tarjetas)
-                  </p>
+                <div className="flex flex-wrap items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                  <span className="rounded bg-slate-100 px-2 py-0.5 font-medium dark:bg-slate-700">
+                    Base ({money(current.openingAmount)})
+                  </span>
+                  <span>+</span>
+                  <span className="rounded bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    Efectivo ({money(current.cashSalesTotalSoFar)})
+                  </span>
+                  {(current.salesByPaymentMethodSoFar?.TRANSFER || 0) > 0 && (
+                    <>
+                      <span>+</span>
+                      <span className="rounded bg-purple-50 px-2 py-0.5 font-medium text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
+                        Transferencias ({money(current.salesByPaymentMethodSoFar.TRANSFER)})
+                      </span>
+                    </>
+                  )}
+                  {(current.salesByPaymentMethodSoFar?.CARD || 0) > 0 && (
+                    <>
+                      <span>+</span>
+                      <span className="rounded bg-blue-50 px-2 py-0.5 font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                        Tarjetas ({money(current.salesByPaymentMethodSoFar.CARD)})
+                      </span>
+                    </>
+                  )}
+                  <span>=</span>
+                  <span className="rounded bg-blue-100 px-2 py-0.5 font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-200">
+                    {money(current.openingAmount + current.salesTotalSoFar)}
+                  </span>
                 </div>
               </div>
 
@@ -331,22 +310,22 @@ export function CashRegisterPage() {
                     step="0.01"
                     value={closingAmount}
                     onChange={(e) => setClosingAmount(e.target.value)}
-                    placeholder="Efectivo contado en cajón"
+                    placeholder="Monto de cierre"
                     className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                   {closingAmount !== '' && (
                     <p className={`mt-1 text-xs font-semibold ${
-                      (parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar) === 0
+                      (parseFloat(closingAmount) || 0) - (current.openingAmount + current.salesTotalSoFar) === 0
                         ? 'text-emerald-600 dark:text-emerald-400'
-                        : (parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar) > 0
+                        : (parseFloat(closingAmount) || 0) - (current.openingAmount + current.salesTotalSoFar) > 0
                         ? 'text-blue-600 dark:text-blue-400'
                         : 'text-red-600 dark:text-red-400'
                     }`}>
-                      {(parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar) === 0
+                      {(parseFloat(closingAmount) || 0) - (current.openingAmount + current.salesTotalSoFar) === 0
                         ? '✅ Cuadre exacto (sin diferencia)'
-                        : (parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar) > 0
-                        ? `Sobran: +${money((parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar))}`
-                        : `Faltan: ${money((parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar))}`}
+                        : (parseFloat(closingAmount) || 0) - (current.openingAmount + current.salesTotalSoFar) > 0
+                        ? `Sobran: +${money((parseFloat(closingAmount) || 0) - (current.openingAmount + current.salesTotalSoFar))}`
+                        : `Faltan: ${money((parseFloat(closingAmount) || 0) - (current.openingAmount + current.salesTotalSoFar))}`}
                     </p>
                   )}
                 </div>
