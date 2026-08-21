@@ -1492,6 +1492,8 @@ export function PosPage() {
                         </div>
                       </div>
                     )}
+                  </div>
+                )
               })()
             )}
           </div>
