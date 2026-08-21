@@ -20,6 +20,9 @@ type PurchaseFormModalProps = {
   onClose: () => void
 }
 
+/** Modo del modal */
+type PurchaseMode = 'regular' | 'external'
+
 /**
  * Línea de la compra. Se guarda el nombre del producto además del id para poder
  * editar compras cuyos productos ya no estén en el listado activo.
@@ -28,7 +31,8 @@ type PurchaseFormModalProps = {
  * viene precargado con el precio actual y si se deja vacío no se modifica.
  */
 type LineItem = {
-  productId: string
+  productId?: string | null
+  customName?: string | null
   productName: string
   productSku: string
   unitId: string | null
@@ -45,6 +49,15 @@ type PresentationOption = {
   factor: number
   price: number
   cost: number
+}
+
+type PaymentMethod = 'CASH' | 'TRANSFER' | 'CARD' | 'OTHER'
+
+const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  CASH: '💵 Efectivo (de la caja)',
+  TRANSFER: '📲 Transferencia',
+  CARD: '💳 Tarjeta',
+  OTHER: '🔄 Otro',
 }
 
 function money(value: number) {
@@ -73,17 +86,21 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
   const queryClient = useQueryClient()
   const isEditing = Boolean(purchase)
 
+  // Modo: compra regular del inventario vs. gasto/compra externa
+  const [mode, setMode] = useState<PurchaseMode>('regular')
+
   // Datos generales de la compra
   const [selectedSupplierId, setSelectedSupplierId] = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [notes, setNotes] = useState('')
   const [tax, setTax] = useState(0)
   const [paymentStatus, setPaymentStatus] = useState<PurchasePaymentStatus>('PAID')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
   const [amountPaid, setAmountPaid] = useState(0)
 
   const [items, setItems] = useState<LineItem[]>([])
 
-  // Buscador / selección del producto a agregar
+  // Buscador / selección del producto a agregar (modo regular)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [selectedUnit, setSelectedUnit] = useState<PresentationOption | null>(null)
@@ -91,19 +108,24 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
   const [itemSalePrice, setItemSalePrice] = useState('')
   const [itemQuantity, setItemQuantity] = useState(1)
 
+  // Agregar ítem externo (modo externo)
+  const [externalItemName, setExternalItemName] = useState('')
+  const [externalItemCost, setExternalItemCost] = useState(0)
+  const [externalItemQty, setExternalItemQty] = useState(1)
+
   // Crear un producto que no existe sin perder la compra en curso
   const [productModalOpen, setProductModalOpen] = useState(false)
 
   const suppliersQuery = useQuery({
     queryKey: ['suppliers'],
     queryFn: listSuppliers,
-    enabled: open,
+    enabled: open && mode === 'regular',
   })
 
   const productsQuery = useQuery({
     queryKey: ['products'],
     queryFn: listProducts,
-    enabled: open,
+    enabled: open && mode === 'regular',
   })
 
   const suppliers = suppliersQuery.data ?? []
@@ -117,28 +139,37 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
     setItemQuantity(1)
   }
 
+  const resetExternalDraft = () => {
+    setExternalItemName('')
+    setExternalItemCost(0)
+    setExternalItemQty(1)
+  }
+
   // Precarga del formulario: compra existente (edición) o formulario limpio
   useEffect(() => {
     if (!open) return
 
     if (purchase) {
-      setSelectedSupplierId(purchase.supplier_id)
+      setSelectedSupplierId(purchase.supplier_id ?? '')
       setInvoiceNumber(purchase.invoice_number ?? '')
       setNotes(purchase.notes ?? '')
       setTax(Number(purchase.tax) || 0)
       setPaymentStatus(purchase.payment_status)
+      setPaymentMethod((purchase.payment_method as PaymentMethod) ?? 'CASH')
       setAmountPaid(Number(purchase.amount_paid) || 0)
+      const isExt = purchase.is_external ?? false
+      setMode(isExt ? 'external' : 'regular')
       setItems(
         (purchase.purchase_items ?? []).map((item) => ({
-          productId: item.product_id,
-          productName: item.products?.name ?? 'Producto eliminado',
+          productId: item.product_id ?? null,
+          customName: item.custom_name ?? null,
+          productName: item.products?.name ?? item.custom_name ?? 'Ítem externo',
           productSku: item.products?.sku ?? '',
           unitId: item.product_unit_id,
           unitName: item.unit_label || 'Unidad',
           unitFactor: Number(item.unit_factor) || 1,
           quantity: Number(item.unit_quantity) || 1,
           cost: Number(item.unit_cost) || 0,
-          // Vacío = no tocar el precio de venta actual del producto
           salePrice: item.sale_price !== null && item.sale_price !== undefined ? String(item.sale_price) : '',
         })),
       )
@@ -148,14 +179,15 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
       setNotes('')
       setTax(0)
       setPaymentStatus('PAID')
+      setPaymentMethod('CASH')
       setAmountPaid(0)
       setItems([])
+      setMode('regular')
     }
 
     setSearchQuery('')
     resetItemDraft()
-    // Solo al abrir o al cambiar de compra: así refrescar el listado de
-    // productos (por ejemplo al crear uno nuevo) no descarta lo ya capturado
+    resetExternalDraft()
   }, [open, purchase])
 
   const filteredProducts = useMemo(() => {
@@ -179,6 +211,7 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
 
   /** Precio de venta vigente de una línea, para mostrarlo como referencia */
   const currentPriceOf = (item: LineItem): number | null => {
+    if (!item.productId) return null
     const product = products.find((p) => p.id === item.productId)
     if (!product) return null
     if (!item.unitId) return product.price
@@ -233,6 +266,7 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
         ...current,
         {
           productId: selectedProduct.id,
+          customName: null,
           productName: selectedProduct.name,
           productSku: selectedProduct.sku,
           unitId: selectedUnit.id,
@@ -247,6 +281,39 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
 
     resetItemDraft()
     toast.success('Producto agregado a la lista')
+  }
+
+  const handleAddExternalItem = () => {
+    if (!externalItemName.trim()) {
+      toast.error('Escribe el nombre del artículo o gasto')
+      return
+    }
+    if (externalItemQty <= 0) {
+      toast.error('La cantidad debe ser mayor a 0')
+      return
+    }
+    if (externalItemCost < 0) {
+      toast.error('El costo no puede ser negativo')
+      return
+    }
+
+    setItems((current) => [
+      ...current,
+      {
+        productId: null,
+        customName: externalItemName.trim(),
+        productName: externalItemName.trim(),
+        productSku: '',
+        unitId: null,
+        unitName: 'Unidad',
+        unitFactor: 1,
+        quantity: externalItemQty,
+        cost: externalItemCost,
+        salePrice: '',
+      },
+    ])
+    resetExternalDraft()
+    toast.success('Ítem agregado')
   }
 
   const updateItem = (index: number, changes: Partial<LineItem>) => {
@@ -265,7 +332,7 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedSupplierId) {
+      if (mode === 'regular' && !selectedSupplierId) {
         throw new Error('Debes seleccionar un proveedor')
       }
       if (items.length === 0) {
@@ -281,7 +348,8 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
       const purchaseItems: PurchaseItemInput[] = items.map((it) => {
         const parsedPrice = it.salePrice.trim() === '' ? null : Number(it.salePrice)
         return {
-          productId: it.productId,
+          productId: it.productId ?? null,
+          customName: it.customName ?? null,
           quantity: Number(it.quantity),
           unitCost: Number(it.cost),
           unitFactor: it.unitFactor,
@@ -292,13 +360,15 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
       })
 
       const payload = {
-        supplierId: selectedSupplierId,
+        supplierId: mode === 'regular' ? selectedSupplierId : null,
         invoiceNumber: invoiceNumber.trim() || undefined,
         notes: notes.trim() || undefined,
         tax: Number(tax) || 0,
         items: purchaseItems,
         paymentStatus,
         amountPaid: paymentStatus === 'PARTIAL' ? Number(amountPaid) : undefined,
+        paymentMethod,
+        isExternal: mode === 'external',
       }
 
       return isEditing && purchase
@@ -313,6 +383,8 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
       toast.success(
         isEditing
           ? 'Compra actualizada (inventario y precios ajustados)'
+          : mode === 'external'
+          ? 'Gasto / compra externa registrada correctamente'
           : 'Compra registrada correctamente (stock actualizado)',
       )
       onClose()
@@ -330,7 +402,7 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           <div>
             <h2 className="flex items-center gap-2 text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
-              {isEditing ? '✏️ Editar Compra' : '🛒 Registrar Entrada de Compra / Mercancía'}
+              {isEditing ? '✏️ Editar Compra' : mode === 'external' ? '🧾 Registrar Gasto / Compra Externa' : '🛒 Registrar Entrada de Compra / Mercancía'}
             </h2>
             {isEditing && (
               <p className="mt-0.5 text-xs text-slate-400">
@@ -347,59 +419,130 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
           </button>
         </div>
 
+        {/* Toggle de modo solo cuando NO se está editando */}
+        {!isEditing && (
+          <div className="shrink-0 flex gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={() => { setMode('regular'); setItems([]) }}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+                mode === 'regular'
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+              }`}
+            >
+              📦 Compra de inventario
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('external'); setItems([]) }}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+                mode === 'external'
+                  ? 'bg-orange-600 text-white shadow'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+              }`}
+            >
+              🧾 Gasto / compra externa
+            </button>
+            <span className="ml-2 hidden sm:flex items-center text-xs text-slate-400">
+              {mode === 'external'
+                ? 'Artículos que no están en el inventario — la plata sale de la caja'
+                : 'Mercancía que entra al inventario con proveedor'}
+            </span>
+          </div>
+        )}
+
         <div className="grid flex-1 gap-6 overflow-y-auto p-4 sm:p-6 grid-cols-1 md:grid-cols-[1fr_1.8fr]">
           {/* Panel izquierdo: datos generales */}
           <div className="space-y-4 border-slate-200 pr-0 dark:border-slate-800 md:border-r md:pr-6">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-              Datos de Proveedor e Impuestos
+              {mode === 'external' ? 'Datos del Gasto' : 'Datos de Proveedor e Impuestos'}
             </h3>
 
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
-                Proveedor *
-              </span>
-              <select
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                value={selectedSupplierId}
-                onChange={(e) => setSelectedSupplierId(e.target.value)}
-              >
-                <option value="">Selecciona un proveedor</option>
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.businessName}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {/* Proveedor — solo en modo regular */}
+            {mode === 'regular' && (
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Proveedor *
+                </span>
+                <select
+                  className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  value={selectedSupplierId}
+                  onChange={(e) => setSelectedSupplierId(e.target.value)}
+                >
+                  <option value="">Selecciona un proveedor</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.businessName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            {/* Info extra en modo externo */}
+            {mode === 'external' && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-800 dark:bg-orange-900/20">
+                <p className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                  🧾 Compra externa
+                </p>
+                <p className="mt-1 text-xs text-orange-600 dark:text-orange-400">
+                  Este gasto <strong>no afecta el inventario</strong>. Úsalo para registrar compras de mostrador, insumos, servicios u otros gastos donde el dinero sale de la caja.
+                </p>
+              </div>
+            )}
 
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
-                Número de Factura
+                {mode === 'external' ? 'Referencia / N° Recibo' : 'Número de Factura'}
               </span>
               <input
-                placeholder="Ej: FAC-1004"
+                placeholder={mode === 'external' ? 'Ej: recibo-001' : 'Ej: FAC-1004'}
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
               />
             </label>
 
+            {mode === 'regular' && (
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Otros Costos / Impuesto (IVA)
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  value={tax || ''}
+                  onChange={(e) => setTax(Number(e.target.value))}
+                />
+              </label>
+            )}
+
+            {/* Método de pago */}
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
-                Otros Costos / Impuesto (IVA)
+                Método de pago
               </span>
-              <input
-                type="number"
-                min="0"
+              <select
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                value={tax || ''}
-                onChange={(e) => setTax(Number(e.target.value))}
-              />
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+              >
+                {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((pm) => (
+                  <option key={pm} value={pm}>{PAYMENT_METHOD_LABELS[pm]}</option>
+                ))}
+              </select>
+              {paymentMethod === 'CASH' && (
+                <p className="mt-1 text-xs text-orange-600 dark:text-orange-400">
+                  ⚠️ Este pago se descontará de la caja abierta
+                </p>
+              )}
             </label>
 
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
-                Estado de pago al proveedor
+                Estado de pago {mode === 'regular' ? 'al proveedor' : ''}
               </span>
               <select
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -439,7 +582,7 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
               </span>
               <textarea
                 rows={3}
-                placeholder="Observaciones de la entrada..."
+                placeholder={mode === 'external' ? 'Descripción del gasto...' : 'Observaciones de la entrada...'}
                 className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -451,183 +594,265 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
                 <span className="text-slate-500">Subtotal:</span>
                 <span className="font-semibold">{money(subtotal)}</span>
               </div>
-              <div className="mt-1 flex justify-between text-sm">
-                <span className="text-slate-500">Impuestos/Otros:</span>
-                <span className="font-semibold">{money(tax)}</span>
-              </div>
+              {mode === 'regular' && (
+                <div className="mt-1 flex justify-between text-sm">
+                  <span className="text-slate-500">Impuestos/Otros:</span>
+                  <span className="font-semibold">{money(tax)}</span>
+                </div>
+              )}
               <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-base dark:border-slate-800">
                 <span className="font-bold text-slate-900 dark:text-white">Total:</span>
-                <span className="font-bold text-blue-600 dark:text-blue-400">{money(total)}</span>
+                <span className={`font-bold ${mode === 'external' ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>{money(total)}</span>
               </div>
             </div>
           </div>
 
-          {/* Panel derecho: productos */}
+          {/* Panel derecho: productos o ítems externos */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                Productos de la compra
-              </h3>
-              <button
-                type="button"
-                onClick={() => setProductModalOpen(true)}
-                className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-              >
-                + Crear producto nuevo
-              </button>
-            </div>
-
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="🔍 Buscar por nombre, SKU o código de barras..."
-                className="w-full rounded-md border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-
-              {filteredProducts.length > 0 && (
-                <ul className="absolute left-0 right-0 z-10 mt-1 max-h-60 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
-                  {filteredProducts.map((p) => (
-                    <li key={p.id}>
-                      <button
-                        type="button"
-                        onClick={() => handleSelectProduct(p)}
-                        className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800"
-                      >
-                        <div>
-                          <p className="font-medium">{p.name}</p>
-                          <p className="text-xs text-slate-400">SKU: {p.sku}</p>
-                        </div>
-                        <span className="text-xs font-semibold text-slate-500">Stock: {p.stock} base</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* Detalle del producto seleccionado */}
-            {selectedProduct && selectedUnit && (
-              <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-800 dark:bg-blue-900/10">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="text-sm font-semibold text-slate-950 dark:text-white">
-                      {selectedProduct.name}
-                    </h4>
-                    <p className="text-xs text-slate-400">
-                      SKU: {selectedProduct.sku} · Precio actual: {money(selectedUnit.price)}
-                    </p>
-                  </div>
+            {mode === 'regular' ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Productos de la compra
+                  </h3>
                   <button
                     type="button"
-                    onClick={resetItemDraft}
-                    className="text-xs text-red-500 hover:underline"
+                    onClick={() => setProductModalOpen(true)}
+                    className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
-                    Cancelar
+                    + Crear producto nuevo
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
-                      Presentación
-                    </span>
-                    <select
-                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      value={selectedUnit.id || ''}
-                      onChange={(e) => handleUnitChange(e.target.value || null)}
-                    >
-                      {presentationOptions.map((opt) => (
-                        <option key={opt.id || ''} value={opt.id || ''}>
-                          {opt.name} (x{opt.factor})
-                        </option>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="🔍 Buscar por nombre, SKU o código de barras..."
+                    className="w-full rounded-md border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+
+                  {filteredProducts.length > 0 && (
+                    <ul className="absolute left-0 right-0 z-10 mt-1 max-h-60 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+                      {filteredProducts.map((p) => (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectProduct(p)}
+                            className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800"
+                          >
+                            <div>
+                              <p className="font-medium">{p.name}</p>
+                              <p className="text-xs text-slate-400">SKU: {p.sku}</p>
+                            </div>
+                            <span className="text-xs font-semibold text-slate-500">Stock: {p.stock} base</span>
+                          </button>
+                        </li>
                       ))}
-                    </select>
-                  </label>
+                    </ul>
+                  )}
+                </div>
 
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
-                      Cantidad
+                {selectedProduct && selectedUnit && (
+                  <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-800 dark:bg-blue-900/10">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-950 dark:text-white">
+                          {selectedProduct.name}
+                        </h4>
+                        <p className="text-xs text-slate-400">
+                          SKU: {selectedProduct.sku} · Precio actual: {money(selectedUnit.price)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={resetItemDraft}
+                        className="text-xs text-red-500 hover:underline"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
+                          Presentación
+                        </span>
+                        <select
+                          className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          value={selectedUnit.id || ''}
+                          onChange={(e) => handleUnitChange(e.target.value || null)}
+                        >
+                          {presentationOptions.map((opt) => (
+                            <option key={opt.id || ''} value={opt.id || ''}>
+                              {opt.name} (x{opt.factor})
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
+                          Cantidad
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          value={itemQuantity}
+                          onChange={(e) => setItemQuantity(Number(e.target.value))}
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
+                          Costo Unitario
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          value={itemCost}
+                          onChange={(e) => setItemCost(Number(e.target.value))}
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
+                          Precio de venta
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Sin cambio"
+                          className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          value={itemSalePrice}
+                          onChange={(e) => setItemSalePrice(e.target.value)}
+                        />
+                      </label>
+
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={handleAddItem}
+                          className="w-full rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                        >
+                          + Agregar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Modo externo: formulario simple para agregar ítems */
+              <>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Artículos / Gastos
+                  </h3>
+                  <span className="text-xs text-slate-400">No afectan el inventario</span>
+                </div>
+
+                <div className="space-y-3 rounded-lg border border-orange-200 bg-orange-50/40 p-4 dark:border-orange-800 dark:bg-orange-900/10">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                    <label className="sm:col-span-2 block">
+                      <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
+                        Nombre del artículo / gasto *
+                      </span>
+                      <input
+                        type="text"
+                        placeholder="Ej: Jabón de manos, servicio domicilio..."
+                        className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        value={externalItemName}
+                        onChange={(e) => setExternalItemName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddExternalItem()}
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
+                        Cantidad
+                      </span>
+                      <input
+                        type="number"
+                        min="1"
+                        className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        value={externalItemQty}
+                        onChange={(e) => setExternalItemQty(Number(e.target.value))}
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
+                        Costo unitario
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        value={externalItemCost || ''}
+                        onChange={(e) => setExternalItemCost(Number(e.target.value))}
+                      />
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">
+                      Subtotal: <strong>{money(externalItemQty * externalItemCost)}</strong>
                     </span>
-                    <input
-                      type="number"
-                      min="1"
-                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      value={itemQuantity}
-                      onChange={(e) => setItemQuantity(Number(e.target.value))}
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
-                      Costo Unitario
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      value={itemCost}
-                      onChange={(e) => setItemCost(Number(e.target.value))}
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200">
-                      Precio de venta
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="Sin cambio"
-                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      value={itemSalePrice}
-                      onChange={(e) => setItemSalePrice(e.target.value)}
-                    />
-                  </label>
-
-                  <div className="flex items-end">
                     <button
                       type="button"
-                      onClick={handleAddItem}
-                      className="w-full rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                      onClick={handleAddExternalItem}
+                      className="rounded-md bg-orange-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-orange-700"
                     >
-                      + Agregar
+                      + Agregar ítem
                     </button>
                   </div>
                 </div>
-              </div>
+              </>
             )}
 
-            {/* Lista de productos agregados */}
+            {/* Lista de ítems agregados */}
             <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-              <table className="w-full min-w-[640px] text-left text-xs">
+              <table className="w-full min-w-[500px] text-left text-xs">
                 <thead className="bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   <tr>
-                    <th className="p-3">Producto</th>
-                    <th className="p-3">Presentación</th>
+                    <th className="p-3">
+                      {mode === 'external' ? 'Artículo / Gasto' : 'Producto'}
+                    </th>
+                    {mode === 'regular' && <th className="p-3">Presentación</th>}
                     <th className="p-3">Cantidad</th>
                     <th className="p-3">Costo</th>
-                    <th className="p-3">Nuevo Precio Venta</th>
+                    {mode === 'regular' && <th className="p-3">Nuevo Precio Venta</th>}
                     <th className="p-3">Subtotal</th>
                     <th className="p-3 w-10"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {items.map((item, index) => (
-                    <tr key={`${item.productId}-${item.unitId ?? 'base'}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <tr
+                      key={`${item.productId ?? 'ext'}-${item.customName ?? ''}-${index}`}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    >
                       <td className="p-3">
                         <p className="font-medium text-slate-900 dark:text-white">{item.productName}</p>
                         {item.productSku && (
                           <p className="text-[10px] text-slate-400">SKU: {item.productSku}</p>
                         )}
-                      </td>
-                      <td className="p-3 text-slate-500 dark:text-slate-400">
-                        {item.unitName}
-                        {item.unitFactor > 1 && (
-                          <span className="text-[10px] text-slate-400"> (x{item.unitFactor})</span>
+                        {!item.productId && (
+                          <span className="text-[10px] text-orange-500 font-medium">externo</span>
                         )}
                       </td>
+                      {mode === 'regular' && (
+                        <td className="p-3 text-slate-500 dark:text-slate-400">
+                          {item.unitName}
+                          {item.unitFactor > 1 && (
+                            <span className="text-[10px] text-slate-400"> (x{item.unitFactor})</span>
+                          )}
+                        </td>
+                      )}
                       <td className="p-3">
                         <input
                           type="number"
@@ -646,21 +871,23 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
                           onChange={(e) => updateItem(index, { cost: Number(e.target.value) })}
                         />
                       </td>
-                      <td className="p-3">
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="Sin cambio"
-                          className="w-24 rounded border border-slate-200 bg-white px-2 py-1 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white placeholder:text-slate-400"
-                          value={item.salePrice}
-                          onChange={(e) => updateItem(index, { salePrice: e.target.value })}
-                        />
-                        {currentPriceOf(item) !== null && (
-                          <span className="ml-1.5 text-[10px] text-slate-400">
-                            Actual: {money(currentPriceOf(item)!)}
-                          </span>
-                        )}
-                      </td>
+                      {mode === 'regular' && (
+                        <td className="p-3">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Sin cambio"
+                            className="w-24 rounded border border-slate-200 bg-white px-2 py-1 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white placeholder:text-slate-400"
+                            value={item.salePrice}
+                            onChange={(e) => updateItem(index, { salePrice: e.target.value })}
+                          />
+                          {currentPriceOf(item) !== null && (
+                            <span className="ml-1.5 text-[10px] text-slate-400">
+                              Actual: {money(currentPriceOf(item)!)}
+                            </span>
+                          )}
+                        </td>
+                      )}
                       <td className="p-3 font-semibold text-slate-900 dark:text-white">
                         {money(item.quantity * item.cost)}
                       </td>
@@ -677,8 +904,10 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
                   ))}
                   {items.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-slate-400">
-                        Ningún producto agregado a la orden de compra.
+                      <td colSpan={mode === 'regular' ? 7 : 5} className="p-8 text-center text-slate-400">
+                        {mode === 'external'
+                          ? 'Ningún artículo o gasto agregado.'
+                          : 'Ningún producto agregado a la orden de compra.'}
                       </td>
                     </tr>
                   )}
@@ -686,10 +915,12 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
               </table>
             </div>
 
-            <p className="text-[11px] text-slate-400">
-              El precio de venta se aplica al producto (o a la presentación) al guardar la compra. Déjalo
-              vacío para no modificarlo.
-            </p>
+            {mode === 'regular' && (
+              <p className="text-[11px] text-slate-400">
+                El precio de venta se aplica al producto (o a la presentación) al guardar la compra. Déjalo
+                vacío para no modificarlo.
+              </p>
+            )}
           </div>
         </div>
 
@@ -704,14 +935,20 @@ export function PurchaseFormModal({ open, purchase, onClose }: PurchaseFormModal
           <button
             type="button"
             onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || items.length === 0 || !selectedSupplierId}
-            className="w-full sm:w-auto rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 text-center"
+            disabled={saveMutation.isPending || items.length === 0 || (mode === 'regular' && !selectedSupplierId)}
+            className={`w-full sm:w-auto rounded-lg px-5 py-2 text-sm font-medium text-white transition disabled:opacity-60 text-center ${
+              mode === 'external'
+                ? 'bg-orange-600 hover:bg-orange-700'
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
           >
             {saveMutation.isPending
               ? 'Procesando...'
               : isEditing
                 ? 'Guardar cambios'
-                : 'Registrar Compra'}
+                : mode === 'external'
+                  ? '🧾 Registrar Gasto'
+                  : '📦 Registrar Compra'}
           </button>
         </div>
       </div>

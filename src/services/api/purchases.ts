@@ -10,7 +10,8 @@ export const PURCHASE_PAYMENT_STATUS_LABELS: Record<PurchasePaymentStatus, strin
 };
 
 export type PurchaseItemInput = {
-  productId: string;
+  productId?: string | null;
+  customName?: string | null;
   quantity: number;
   unitCost: number;
   unitFactor?: number;
@@ -24,12 +25,14 @@ export type PurchaseItemInput = {
 };
 
 export type CreatePurchaseInput = {
-  supplierId: string;
+  supplierId?: string | null;
   invoiceNumber?: string;
   notes?: string;
   tax?: number;
   items: PurchaseItemInput[];
   paymentStatus?: PurchasePaymentStatus;
+  paymentMethod?: PaymentMethod;
+  isExternal?: boolean;
   amountPaid?: number;
 };
 
@@ -45,7 +48,7 @@ export type SupplierPayment = {
 
 export type Purchase = {
   id: string;
-  supplier_id: string;
+  supplier_id?: string | null;
   user_id: string;
   invoice_number: string | null;
   notes: string | null;
@@ -53,6 +56,8 @@ export type Purchase = {
   total: number;
   status: string;
   payment_status: PurchasePaymentStatus;
+  payment_method?: PaymentMethod;
+  is_external?: boolean;
   amount_paid: number;
   created_at: string;
   subtotal: number;
@@ -60,7 +65,8 @@ export type Purchase = {
   users?: { full_name: string } | null;
   purchase_items?: Array<{
     id: string;
-    product_id: string;
+    product_id?: string | null;
+    custom_name?: string | null;
     product_unit_id: string | null;
     quantity: number;
     unit_cost: number;
@@ -69,7 +75,7 @@ export type Purchase = {
     unit_factor: number;
     unit_quantity: number;
     sale_price: number | null;
-    products: { name: string; sku?: string };
+    products?: { name: string; sku?: string } | null;
   }>;
   supplier_payments?: SupplierPayment[];
 };
