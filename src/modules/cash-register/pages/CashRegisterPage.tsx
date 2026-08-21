@@ -244,21 +244,70 @@ export function CashRegisterPage() {
               </div>
             )}
 
-            <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Cerrar caja</h3>
-              <p className="mt-1 text-xs text-slate-400">
-                Cuenta el efectivo en caja e ingresa el monto real. Se calculará la diferencia contra lo esperado.
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_2fr_auto]">
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={closingAmount}
-                  onChange={(e) => setClosingAmount(e.target.value)}
-                  placeholder="Monto contado en caja"
-                  className="rounded-md border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                />
+            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Cerrar caja</h3>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    Ingresa el efectivo total físico que hay en el cajón para realizar el arqueo.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setClosingAmount(String(current.openingAmount + current.cashSalesTotalSoFar))}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                >
+                  ⚡ Usar valor esperado: {money(current.openingAmount + current.cashSalesTotalSoFar)}
+                </button>
+              </div>
+
+              {/* Guía de cálculo */}
+              <div className="mt-3 rounded-lg border border-blue-100 bg-white p-3 text-xs dark:border-blue-950 dark:bg-slate-800/80">
+                <p className="font-medium text-slate-700 dark:text-slate-300">
+                  💡 <strong>¿Qué valor debes colocar?</strong> Debes colocar el efectivo físico total en caja:
+                </p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800 dark:bg-slate-700 dark:text-slate-200">
+                    Base ({money(current.openingAmount)})
+                  </span>
+                  <span>+</span>
+                  <span className="rounded bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    Efectivo vendido ({money(current.cashSalesTotalSoFar)})
+                  </span>
+                  <span>=</span>
+                  <span className="rounded bg-blue-50 px-2 py-0.5 font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                    Total esperado en cajón: {money(current.openingAmount + current.cashSalesTotalSoFar)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_2fr_auto]">
+                <div>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={closingAmount}
+                    onChange={(e) => setClosingAmount(e.target.value)}
+                    placeholder="Efectivo contado en cajón"
+                    className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                  {closingAmount !== '' && (
+                    <p className={`mt-1 text-xs font-semibold ${
+                      (parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar) === 0
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : (parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar) > 0
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-red-600 dark:text-red-400'
+                    }`}>
+                      {(parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar) === 0
+                        ? '✅ Cuadre exacto (sin diferencia)'
+                        : (parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar) > 0
+                        ? `Sobran: +${money((parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar))}`
+                        : `Faltan: ${money((parseFloat(closingAmount) || 0) - (current.openingAmount + current.cashSalesTotalSoFar))}`}
+                    </p>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={closingNote}
@@ -270,7 +319,7 @@ export function CashRegisterPage() {
                   type="button"
                   onClick={handleClose}
                   disabled={closeMutation.isPending}
-                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
+                  className="rounded-md bg-red-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
                 >
                   {closeMutation.isPending ? 'Cerrando...' : 'Cerrar caja'}
                 </button>
