@@ -114,6 +114,43 @@ export function CloseShiftSummaryModal({ open, register, onClose }: Props) {
             </p>
           )}
 
+          {/* Desglose por método de pago */}
+          {register.byPaymentMethod && (
+            <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Ventas por método de pago</h3>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {([
+                  ['CASH', '💵', 'Efectivo'],
+                  ['CARD', '💳', 'Tarjeta'],
+                  ['TRANSFER', '🏦', 'Transferencia'],
+                  ['PENDING', '⏳', 'Pendiente (Fiado)'],
+                  ['OTHER', '🔄', 'Otro'],
+                ] as const).map(([key, icon, label]) => {
+                  const val = (register.byPaymentMethod as any)?.[key] || 0
+                  return (
+                    <div key={key} className={`rounded-lg border p-3 text-center ${
+                      key === 'PENDING' && val > 0
+                        ? 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20'
+                        : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60'
+                    }`}>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{icon} {label}</p>
+                      <p className={`mt-1 text-sm font-semibold ${
+                        key === 'PENDING' && val > 0
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-slate-900 dark:text-white'
+                      }`}>{money(val)}</p>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="mt-2 flex justify-between rounded-lg border border-slate-300 bg-slate-100 px-4 py-2.5 dark:border-slate-700 dark:bg-slate-800">
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Total general</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">{money(salesTotal)}</span>
+              </div>
+            </div>
+          )}
+
+
           {/* Arqueo de caja */}
           <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Arqueo de efectivo</h3>

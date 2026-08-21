@@ -430,6 +430,8 @@ export function PosPage() {
     paymentInputRef.current?.select()
   }
 
+  const customerNameRef = useRef<HTMLInputElement>(null)
+
   const handleConfirmPayment = () => {
     if (!isRegisterOpen) {
       toast.error('Debes abrir la caja antes de cobrar')
@@ -437,6 +439,13 @@ export function PosPage() {
     }
     if (cart.length === 0) {
       toast.error('El carrito está vacío')
+      return
+    }
+
+    // Ventas PENDIENTES requieren el nombre del deudor
+    if (paymentMethod === 'PENDING' && !selectedCustomerId && !customerName.trim()) {
+      toast.error('⏳ Debes ingresar el nombre de la persona que debe esta factura (Fiado)')
+      customerNameRef.current?.focus()
       return
     }
 
@@ -782,8 +791,11 @@ export function PosPage() {
         <div className="border-t border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
           {/* Cliente (autocompleta desde la base de clientes registrados) */}
           <div className="relative mb-3 flex items-center gap-2">
-            <span className="shrink-0 text-xs font-medium text-slate-400">👤 Cliente</span>
+            <span className={`shrink-0 text-xs font-medium ${paymentMethod === 'PENDING' ? 'text-amber-500 font-semibold' : 'text-slate-400'}`}>
+              {paymentMethod === 'PENDING' ? '⏳ Deudor *' : '👤 Cliente'}
+            </span>
             <input
+              ref={customerNameRef}
               type="text"
               value={customerName}
               onChange={(e) => {
@@ -794,8 +806,12 @@ export function PosPage() {
               onFocus={() => setShowCustomerSuggestions(true)}
               onBlur={() => setTimeout(() => setShowCustomerSuggestions(false), 100)}
               onKeyDown={(e) => e.key === 'Enter' && !showCustomerSuggestions && focusPayment()}
-              placeholder="Busca un cliente registrado o escribe uno nuevo (opcional)"
-              className="flex-1 border-b border-slate-200 bg-transparent pb-0.5 text-sm text-slate-700 placeholder-slate-300 focus:border-blue-400 focus:outline-none dark:border-slate-700 dark:text-slate-200 dark:placeholder-slate-500"
+              placeholder={paymentMethod === 'PENDING' ? 'Nombre del cliente que debe esta factura (obligatorio)' : 'Busca un cliente registrado o escribe uno nuevo (opcional)'}
+              className={`flex-1 border-b pb-0.5 text-sm bg-transparent focus:outline-none dark:text-slate-200 ${
+                paymentMethod === 'PENDING'
+                  ? 'border-amber-400 text-amber-700 placeholder-amber-300 focus:border-amber-500 dark:border-amber-600 dark:text-amber-300 dark:placeholder-amber-600'
+                  : 'border-slate-200 text-slate-700 placeholder-slate-300 focus:border-blue-400 dark:border-slate-700 dark:placeholder-slate-500'
+              }`}
             />
             {selectedCustomerId && (
               <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
@@ -1119,6 +1135,22 @@ export function PosPage() {
                   0,
                 )
 
+                // Desglose por método de pago (tomando en cuenta pagos mixtos)
+                const byMethod: Record<string, number> = { CASH: 0, CARD: 0, TRANSFER: 0, PENDING: 0, OTHER: 0 }
+                for (const sale of scopedSales) {
+                  if (sale.payment_method_2) {
+                    const pm1 = sale.payment_method || 'CASH'
+                    const pm2 = sale.payment_method_2 || 'TRANSFER'
+                    const amt1 = Number(sale.amount_paid_1 ?? 0)
+                    const amt2 = Number(sale.amount_paid_2 ?? 0)
+                    byMethod[pm1] = (byMethod[pm1] || 0) + amt1
+                    byMethod[pm2] = (byMethod[pm2] || 0) + amt2
+                  } else {
+                    const pm = sale.payment_method || 'CASH'
+                    byMethod[pm] = (byMethod[pm] || 0) + sale.total
+                  }
+                }
+
                 // Agrupar por producto + presentación vendida
                 const productSummaryMap = new Map<string, ProductSalesSummary>()
                 for (const sale of scopedSales) {
@@ -1166,6 +1198,31 @@ export function PosPage() {
                         <p className="mt-0.5 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{money(totalToday)}</p>
                       </div>
                     </div>
+
+                    {/* Desglose por método de pago */}
+                    {scopedSales.length > 0 && (
+                      <div className="mb-4">
+                        <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">Por método de pago</h3>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {([['CASH','💵','Efectivo'],['CARD','💳','Tarjeta'],['TRANSFER','🏦','Transferencia'],['PENDING','⏳','Pendiente'],['OTHER','🔄','Otro']] as const).map(([key, icon, label]) => {
+                            const val = byMethod[key] || 0
+                            if (val === 0 && key !== 'CASH') return null
+                            return (
+                              <div key={key} className={`rounded-lg border p-2 text-center ${
+                                key === 'PENDING' && val > 0
+                                  ? 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20'
+                                  : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60'
+                              }`}>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{icon} {label}</p>
+                                <p className={`mt-0.5 text-sm font-semibold ${
+                                  key === 'PENDING' && val > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'
+                                }`}>{money(val)}</p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">
                       Productos vendidos
@@ -1238,21 +1295,28 @@ export function PosPage() {
                               .map((sale) => (
                                 <tr
                                   key={sale.id}
-                                  className="border-b border-slate-100 last:border-0 dark:border-slate-800"
+                                  className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${
+                                    sale.payment_method === 'PENDING' ? 'bg-amber-50/60 dark:bg-amber-900/10' : ''
+                                  }`}
                                 >
                                   <td className="px-3 py-2 font-mono text-xs text-slate-500 dark:text-slate-400">
                                     #{sale.id.substring(0, 8).toUpperCase()}
+                                    {sale.payment_method === 'PENDING' && (
+                                      <span className="ml-1 inline-block rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-800/40 dark:text-amber-400">FIADO</span>
+                                    )}
                                   </td>
                                   <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
                                     {formatTime(sale.created_at)}
                                   </td>
                                   <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
-                                    {sale.customers?.full_name || 'Venta de mostrador'}
+                                    {sale.customers?.full_name || sale.notes?.replace('Cliente: ', '') || 'Venta de mostrador'}
                                   </td>
                                   <td className="px-3 py-2 text-center text-slate-500 dark:text-slate-400">
                                     {sale.sale_items.reduce((sum, item) => sum + item.unit_quantity, 0)}
                                   </td>
-                                  <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white">
+                                  <td className={`px-3 py-2 text-right font-semibold ${
+                                    sale.payment_method === 'PENDING' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'
+                                  }`}>
                                     {money(sale.total)}
                                   </td>
                                   <td className="px-3 py-2 text-center">

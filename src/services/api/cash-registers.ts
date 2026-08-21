@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import type { PaymentMethod } from './sales';
 
 export type CashRegister = {
   id: string;
@@ -25,6 +26,7 @@ export type CurrentCashRegister = CashRegister & {
   salesTotalSoFar: number;
   cashSalesTotalSoFar: number;
   salesCountSoFar: number;
+  salesByPaymentMethodSoFar: Record<PaymentMethod, number>;
   /** Costo de lo vendido en el turno. null si no se pudo calcular */
   cogsTotalSoFar: number | null;
   /** Utilidad del turno = ventas − costo de lo vendido */
@@ -35,6 +37,7 @@ export type CurrentCashRegister = CashRegister & {
 export type ClosedCashRegister = CashRegister & {
   cogsTotal: number | null;
   profitTotal: number | null;
+  byPaymentMethod: Record<PaymentMethod, number>;
 };
 
 export async function getCurrentCashRegister(): Promise<CurrentCashRegister | null> {

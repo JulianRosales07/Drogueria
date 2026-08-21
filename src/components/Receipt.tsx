@@ -81,6 +81,12 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
 
         {/* ── Sale meta ── */}
         <div style={{ marginBottom: paddingV }}>
+          {/* Banner para ventas pendientes */}
+          {paymentMethod === 'PENDING' && (
+            <div style={{ border: '2px dashed #f59e0b', padding: '4px 8px', marginBottom: '6px', textAlign: 'center', color: '#92400e', fontWeight: 'bold' }}>
+              *** VENTA PENDIENTE DE PAGO (FIADO) ***
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontWeight: 600 }}>Factura:</span>
             <span>{saleId.substring(0, 8).toUpperCase()}</span>
@@ -91,7 +97,7 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           </div>
           {customerName && (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 600 }}>Cliente:</span>
+              <span style={{ fontWeight: 600 }}>{paymentMethod === 'PENDING' ? 'Deudor:' : 'Cliente:'}</span>
               <span>{customerName}</span>
             </div>
           )}
@@ -180,8 +186,16 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
             <div style={{ borderTop: borderLight, marginTop: '4px', paddingTop: '3px', fontSize: '0.9em' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Medio de pago:</span>
-                <span>{PAYMENT_METHOD_LABELS[paymentMethod as PaymentMethod] || paymentMethod}</span>
+                <span style={{ fontWeight: paymentMethod === 'PENDING' ? 'bold' : 'normal', color: paymentMethod === 'PENDING' ? '#b45309' : 'inherit' }}>
+                  {PAYMENT_METHOD_LABELS[paymentMethod as PaymentMethod] || paymentMethod}
+                </span>
               </div>
+              {paymentMethod === 'PENDING' && customerName && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#92400e' }}>
+                  <span>Deudor:</span>
+                  <span>{customerName}</span>
+                </div>
+              )}
             </div>
           ) : null}
         </div>

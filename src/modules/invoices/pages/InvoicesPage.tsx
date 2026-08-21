@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useReactToPrint } from 'react-to-print'
 import type { ColumnDef } from '@tanstack/react-table'
+import toast from 'react-hot-toast'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { DataTable } from '../../../components/ui/DataTable'
 import { Receipt } from '../../../components/Receipt'
-import { listSales, listSaleReturns, PAYMENT_METHOD_LABELS, type Sale } from '../../../services/api/sales'
+import { listSales, listSaleReturns, payPendingSale, PAYMENT_METHOD_LABELS, type Sale, type PaymentMethod } from '../../../services/api/sales'
 import { useReceiptConfig } from '../../../hooks/useReceiptConfig'
 import { ReturnModal } from '../components/ReturnModal'
 
@@ -93,6 +94,10 @@ export function InvoicesPage() {
   const [viewingSale, setViewingSale] = useState<Sale | null>(null)
   const [printingSale, setPrintingSale] = useState<Sale | null>(null)
   const [returningSale, setReturningSale] = useState<Sale | null>(null)
+  const [payingPendingSale, setPayingPendingSale] = useState<Sale | null>(null)
+  const [pendingPayMethod, setPendingPayMethod] = useState<PaymentMethod>('CASH')
+  const [showOnlyPending, setShowOnlyPending] = useState(false)
+  const queryClient = useQueryClient()
 
   const receiptRef = useRef<HTMLDivElement>(null)
   const receiptConfig = useReceiptConfig()
@@ -156,6 +161,20 @@ export function InvoicesPage() {
     setTimeout(() => handlePrint(), 100)
   }
 
+  const payPendingMutation = useMutation({
+    mutationFn: ({ saleId, paymentMethod }: { saleId: string; paymentMethod: PaymentMethod }) =>
+      payPendingSale(saleId, { paymentMethod }),
+    onSuccess: () => {
+      toast.success('Pago registrado correctamente')
+      setPayingPendingSale(null)
+      queryClient.invalidateQueries({ queryKey: ['sales'] })
+      queryClient.invalidateQueries({ queryKey: ['cash-register-current'] })
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Error al registrar el pago')
+    },
+  })
+
   const columns = useMemo<ColumnDef<Sale>[]>(
     () => [
       {
@@ -200,9 +219,17 @@ export function InvoicesPage() {
             )
           }
           return (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              {PAYMENT_METHOD_LABELS[s.payment_method] || s.payment_method}
-            </span>
+            <div className="flex flex-col gap-0.5">
+              {s.payment_method === 'PENDING' ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                  ⏳ Pendiente (Fiado)
+                </span>
+              ) : (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  {PAYMENT_METHOD_LABELS[s.payment_method] || s.payment_method}
+                </span>
+              )}
+            </div>
           )
         },
       },
@@ -220,7 +247,11 @@ export function InvoicesPage() {
         header: 'Total',
         accessorKey: 'total',
         cell: ({ row }) => (
-          <span className="font-semibold text-slate-900 dark:text-white">{money(row.original.total)}</span>
+          <span className={`font-semibold ${
+            row.original.payment_method === 'PENDING'
+              ? 'text-amber-600 dark:text-amber-400'
+              : 'text-slate-900 dark:text-white'
+          }`}>{money(row.original.total)}</span>
         ),
       },
       {
@@ -228,6 +259,7 @@ export function InvoicesPage() {
         id: 'actions',
         cell: ({ row }) => {
           const canReturn = row.original.status !== 'RETURNED' && row.original.status !== 'CANCELLED'
+          const isPending = row.original.payment_method === 'PENDING'
           return (
             <div className="flex items-center gap-2.5">
               <button
@@ -239,7 +271,20 @@ export function InvoicesPage() {
               >
                 Ver detalle
               </button>
-              {canReturn && (
+              {isPending && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setPayingPendingSale(row.original)
+                    setPendingPayMethod('CASH')
+                  }}
+                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 flex items-center gap-0.5"
+                  title="Registrar el pago de esta factura fiada"
+                >
+                  ✅ Cobrar
+                </button>
+              )}
+              {canReturn && !isPending && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -292,7 +337,7 @@ export function InvoicesPage() {
           </article>
         </div>
 
-        <div className="mb-3 flex gap-1.5">
+        <div className="mb-3 flex flex-wrap gap-1.5 items-center">
           {(
             [
               { key: 'today', label: 'Hoy' },
@@ -314,6 +359,17 @@ export function InvoicesPage() {
               {opt.label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setShowOnlyPending((v) => !v)}
+            className={`ml-auto rounded-md px-3 py-1.5 text-xs font-medium transition border ${
+              showOnlyPending
+                ? 'border-amber-400 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+            }`}
+          >
+            ⏳ {showOnlyPending ? 'Mostrando fiados' : 'Ver fiados pendientes'}
+          </button>
         </div>
 
         <div className="mb-4 flex flex-wrap items-end gap-3">
@@ -361,14 +417,16 @@ export function InvoicesPage() {
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center text-sm text-red-600 dark:border-red-800 dark:bg-red-500/10 dark:text-red-400">
             Error al cargar las facturas
           </div>
-        ) : filteredSales.length === 0 ? (
+        ) : filteredSales.filter(s => !showOnlyPending || s.payment_method === 'PENDING').length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 py-10 text-center text-sm text-slate-400 dark:border-slate-700">
-            {preset === 'today'
+            {showOnlyPending
+              ? 'No hay facturas pendientes de pago (fiadas) en este rango.'
+              : preset === 'today'
               ? 'Aún no hay facturas registradas hoy.'
               : 'No hay facturas registradas en el rango seleccionado.'}
           </div>
         ) : (
-          <DataTable data={filteredSales} columns={columns} />
+          <DataTable data={filteredSales.filter(s => !showOnlyPending || s.payment_method === 'PENDING')} columns={columns} />
         )}
       </SectionCard>
 
@@ -538,6 +596,73 @@ export function InvoicesPage() {
           sale={returningSale}
           onClose={() => setReturningSale(null)}
         />
+      )}
+
+      {/* ===== Modal de pago de factura fiada ===== */}
+      {payingPendingSale && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 sm:p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+                Registrar pago — Factura {invoiceNumber(payingPendingSale.id)}
+              </h2>
+              <button
+                onClick={() => setPayingPendingSale(null)}
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >✕</button>
+            </div>
+
+            <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-900/20">
+              <p className="font-medium text-amber-800 dark:text-amber-300">⏳ Pago pendiente (Fiado)</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                {payingPendingSale.customers?.full_name || payingPendingSale.notes?.replace('Cliente: ', '') || 'Sin cliente'}
+              </p>
+              <p className="text-lg font-bold text-amber-900 dark:text-amber-200 mt-1">
+                Total a cobrar: {money(payingPendingSale.total)}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Método de pago con el que canceló
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['CASH', 'CARD', 'TRANSFER', 'OTHER'] as PaymentMethod[]).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setPendingPayMethod(m)}
+                    className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                      pendingPayMethod === m
+                        ? 'border-blue-500 bg-blue-600 text-white'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    {PAYMENT_METHOD_LABELS[m]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPayingPendingSale(null)}
+                className="flex-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={payPendingMutation.isPending}
+                onClick={() => payPendingMutation.mutate({ saleId: payingPendingSale.id, paymentMethod: pendingPayMethod })}
+                className="flex-1 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {payPendingMutation.isPending ? 'Registrando...' : '✅ Confirmar pago'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ===== Recibo usado solo para reimpresión ===== */}

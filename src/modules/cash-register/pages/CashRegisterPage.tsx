@@ -212,6 +212,38 @@ export function CashRegisterPage() {
               </div>
             </div>
 
+            {/* Desglose por método de pago */}
+            {current.salesByPaymentMethodSoFar && (
+              <div>
+                <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Ventas por método de pago</h3>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  {([
+                    ['CASH', '💵', 'Efectivo', 'emerald'],
+                    ['CARD', '💳', 'Tarjeta', 'blue'],
+                    ['TRANSFER', '🏦', 'Transferencia', 'purple'],
+                    ['PENDING', '⏳', 'Pendiente (Fiado)', 'amber'],
+                    ['OTHER', '🔄', 'Otro', 'slate'],
+                  ] as const).map(([key, icon, label]) => {
+                    const val = (current.salesByPaymentMethodSoFar as any)?.[key] || 0
+                    return (
+                      <div key={key} className={`rounded-lg border p-3 text-center ${
+                        key === 'PENDING' && val > 0
+                          ? 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20'
+                          : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60'
+                      }`}>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{icon} {label}</p>
+                        <p className={`mt-1 text-base font-semibold ${
+                          key === 'PENDING' && val > 0
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-slate-900 dark:text-white'
+                        }`}>{money(val)}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Cerrar caja</h3>
               <p className="mt-1 text-xs text-slate-400">

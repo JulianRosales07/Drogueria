@@ -1,12 +1,21 @@
 import { apiClient } from './client';
 
-export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER' | 'OTHER';
+export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER' | 'PENDING' | 'OTHER';
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   CASH: 'Efectivo',
   CARD: 'Tarjeta',
   TRANSFER: 'Transferencia',
+  PENDING: 'Pendiente de pago (Fiado)',
   OTHER: 'Otro',
+};
+
+export const PAYMENT_METHOD_ICONS: Record<PaymentMethod, string> = {
+  CASH: '💵',
+  CARD: '💳',
+  TRANSFER: '🏦',
+  PENDING: '⏳',
+  OTHER: '🔄',
 };
 
 export type SaleItem = {
@@ -115,6 +124,16 @@ export async function createSaleReturn(saleId: string, input: CreateReturnInput)
 
 export async function listSaleReturns(saleId: string): Promise<SaleReturn[]> {
   const { data } = await apiClient.get<{ success: boolean; data: SaleReturn[] }>(`/sales/${saleId}/returns`);
+  return data.data;
+}
+
+export type PayPendingSaleInput = {
+  paymentMethod: PaymentMethod;
+  note?: string;
+};
+
+export async function payPendingSale(saleId: string, input: PayPendingSaleInput): Promise<Sale> {
+  const { data } = await apiClient.patch<{ success: boolean; data: Sale }>(`/sales/${saleId}/pay`, input);
   return data.data;
 }
 
