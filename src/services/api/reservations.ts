@@ -66,17 +66,17 @@ export async function listReservations(params?: {
   status?: string;
   search?: string;
 }): Promise<CourtReservation[]> {
-  const response = await apiClient.get('/api/reservations', { params });
+  const response = await apiClient.get('/reservations', { params });
   return response.data.data;
 }
 
 export async function getReservation(id: string): Promise<CourtReservation> {
-  const response = await apiClient.get(`/api/reservations/${id}`);
+  const response = await apiClient.get(`/reservations/${id}`);
   return response.data.data;
 }
 
 export async function createReservation(input: CreateReservationInput): Promise<CourtReservation> {
-  const response = await apiClient.post('/api/reservations', input);
+  const response = await apiClient.post('/reservations', input);
   return response.data.data;
 }
 
@@ -84,7 +84,7 @@ export async function addReservationAdvance(
   reservationId: string,
   input: AddAdvanceInput
 ): Promise<CourtReservation> {
-  const response = await apiClient.post(`/api/reservations/${reservationId}/advances`, input);
+  const response = await apiClient.post(`/reservations/${reservationId}/advances`, input);
   return response.data.data;
 }
 
@@ -92,11 +92,11 @@ export async function completeReservation(
   reservationId: string,
   saleId: string
 ): Promise<CourtReservation> {
-  const response = await apiClient.patch(`/api/reservations/${reservationId}/complete`, { saleId });
+  const response = await apiClient.patch(`/reservations/${reservationId}/complete`, { saleId });
   return response.data.data;
 }
 
 export async function cancelReservation(reservationId: string): Promise<{ success: boolean }> {
-  const response = await apiClient.patch(`/api/reservations/${reservationId}/cancel`);
+  const response = await apiClient.patch(`/reservations/${reservationId}/cancel`);
   return response.data.data;
 }
