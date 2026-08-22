@@ -35,7 +35,7 @@ function formatDate(dateStr: string) {
   }).format(d);
 }
 
-const COMMON_COURTS = ['Cancha 1', 'Cancha 2', 'Cancha 3', 'Cancha Sintética 5v5', 'Cancha Sintética 7v7'];
+const COMMON_COURTS = ['Cancha 1', 'Cancha 2'];
 
 export function ReservationsPage() {
   const navigate = useNavigate();
