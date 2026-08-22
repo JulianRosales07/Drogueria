@@ -16,6 +16,7 @@ import { UsersPage } from '../modules/users/pages/UsersPage'
 import { StoresPage } from '../modules/stores/pages/StoresPage'
 import { CashRegisterPage } from '../modules/cash-register/pages/CashRegisterPage'
 import { SubscriptionPage } from '../modules/subscription/pages/SubscriptionPage'
+import { ReservationsPage } from '../modules/reservations/pages/ReservationsPage'
 import { useUiStore } from '../store/ui-store'
 import {
   OPERATOR_ALLOWED_PATHS,
@@ -130,6 +131,14 @@ export function App() {
           element={
             <BusinessRoute>
               <PosPage />
+            </BusinessRoute>
+          }
+        />
+        <Route
+          path="/reservas"
+          element={
+            <BusinessRoute>
+              <ReservationsPage />
             </BusinessRoute>
           }
         />

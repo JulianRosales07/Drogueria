@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { useReactToPrint } from 'react-to-print'
@@ -15,6 +15,7 @@ import {
 } from '../../../services/api/sales'
 import { listCustomers } from '../../../services/api/customers'
 import { getCurrentCashRegister, listCashRegisterHistory } from '../../../services/api/cash-registers'
+import { listReservations, completeReservation, type CourtReservation } from '../../../services/api/reservations'
 import { useReceiptConfig } from '../../../hooks/useReceiptConfig'
 import { useUiStore } from '../../../store/ui-store'
 
@@ -98,6 +99,7 @@ export type PosTab = {
   cashReceived: string
   customerName: string
   selectedCustomerId: string | null
+  reservationId?: string | null
 }
 
 const POS_TABS_STORAGE_KEY = 'pos_tabs_state_v1'
@@ -360,12 +362,65 @@ export function PosPage() {
   const [dailySalesTab, setDailySalesTab] = useState<'PAYMENTS' | 'PRODUCTS'>('PAYMENTS')
   const [dailySalesPaymentFilter, setDailySalesPaymentFilter] = useState<string>('ALL')
 
+  // ===== Estado de Reservas de Canchas =====
+  const location = useLocation()
+  const [showReservationPicker, setShowReservationPicker] = useState(false)
+  const [reservationSearchQuery, setReservationSearchQuery] = useState('')
+
+  const pendingReservationsQuery = useQuery({
+    queryKey: ['reservations-pending'],
+    queryFn: () => listReservations({ status: 'PENDING' }),
+    enabled: showReservationPicker,
+  })
+
+  const loadReservationIntoCart = (res: CourtReservation) => {
+    const reservationItem: CartItem = {
+      productId: `reservation-${res.id}`,
+      sku: 'CANCHA',
+      name: `Alquiler ${res.courtName} (${res.reservationDate} ${res.startTime}–${res.endTime})`,
+      price: res.pendingBalance,
+      quantity: 1,
+      stock: 9999,
+      unitFactor: 1,
+      unitLabel: res.totalAdvanced > 0 ? `Saldo (Abonado ${money(res.totalAdvanced)})` : 'Alquiler',
+      productUnitId: null,
+    }
+
+    setCart((current) => {
+      const filtered = current.filter((it) => !it.productId.startsWith('reservation-'))
+      return [...filtered, reservationItem]
+    })
+    setCustomerName(res.customerName)
+    setSelectedCustomerId(res.customerId || null)
+    updateActiveTab({ reservationId: res.id })
+    setShowReservationPicker(false)
+    toast.success(`Cancha "${res.courtName}" cargada (Saldo: ${money(res.pendingBalance)})`)
+    setTimeout(() => searchInputRef.current?.focus(), 50)
+  }
+
+  useEffect(() => {
+    if (location.state && (location.state as any).loadReservation) {
+      loadReservationIntoCart((location.state as any).loadReservation)
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
+
   const createSaleMutation = useMutation({
     mutationFn: createSale,
     onSuccess: (sale) => {
       setCompletedSale(sale)
       setLastSale(sale)
       setShowReceipt(true)
+
+      const currentResId = activeTab.reservationId
+      if (currentResId) {
+        completeReservation(currentResId, sale.id)
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ['reservations'] })
+            queryClient.invalidateQueries({ queryKey: ['reservations-pending'] })
+          })
+          .catch((err) => console.error('Error completando reserva:', err))
+      }
 
       setTabsState((prev) => {
         if (prev.tabs.length > 1) {
@@ -391,6 +446,7 @@ export function PosPage() {
             cashReceived: '',
             customerName: '',
             selectedCustomerId: null,
+            reservationId: null,
           }
           return {
             ...prev,
@@ -874,6 +930,13 @@ export function PosPage() {
           <div className="flex shrink-0 items-center gap-1">
             {/* Botones normales: visibles solo en pantallas medianas+ */}
             <button
+              onClick={() => setShowReservationPicker(true)}
+              className="hidden items-center gap-1.5 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 md:flex"
+              title="Cargar una reserva de cancha y liquidar saldo"
+            >
+              ⚽ Cargar Reserva
+            </button>
+            <button
               onClick={() => setShowDailySales(true)}
               className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 md:flex"
             >
@@ -909,8 +972,14 @@ export function PosPage() {
               {showMobileMenu && (
                 <div className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
                   <button
+                    onClick={() => { setShowReservationPicker(true); setShowMobileMenu(false) }}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-sm font-semibold text-blue-600 transition hover:bg-slate-50 dark:text-blue-400 dark:hover:bg-slate-800"
+                  >
+                    ⚽ Cargar Reserva
+                  </button>
+                  <button
                     onClick={() => { setShowDailySales(true); setShowMobileMenu(false) }}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                    className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
                     📅 Ventas del día
                   </button>
@@ -2021,9 +2090,10 @@ export function PosPage() {
                 amountPaid2={completedSale.amount_paid_2}
                 items={completedSale.sale_items.map((item) => ({
                   name:
-                    item.unit_label && item.unit_label !== 'Unidad'
-                      ? `${item.products.name} (${item.unit_label})`
-                      : item.products.name,
+                    item.custom_name ||
+                    (item.unit_label && item.unit_label !== 'Unidad'
+                      ? `${item.products?.name || 'Servicio'} (${item.unit_label})`
+                      : item.products?.name || 'Servicio'),
                   quantity: item.unit_quantity,
                   unitPrice: item.unit_price,
                   lineTotal: item.line_total,
@@ -2051,6 +2121,121 @@ export function PosPage() {
                 className="w-full sm:flex-1 rounded-lg bg-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-center text-sm"
               >
                 🖨️ Imprimir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Modal Seleccionar Reserva de Cancha ===== */}
+      {showReservationPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 sm:p-4 backdrop-blur-xs">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-900 overflow-hidden">
+            <div className="mb-4 flex shrink-0 items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>⚽</span> Cargar Reserva a la Venta
+              </h2>
+              <button
+                onClick={() => setShowReservationPicker(false)}
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Buscador de reservas */}
+            <div className="mb-3 shrink-0">
+              <input
+                type="text"
+                value={reservationSearchQuery}
+                onChange={(e) => setReservationSearchQuery(e.target.value)}
+                placeholder="Buscar por cliente, cancha o teléfono..."
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+            </div>
+
+            {/* Lista de reservas pendientes */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+              {pendingReservationsQuery.isLoading ? (
+                <div className="py-12 text-center text-sm text-slate-400">Cargando reservas pendientes...</div>
+              ) : (pendingReservationsQuery.data || []).length === 0 ? (
+                <div className="py-12 text-center text-slate-400">
+                  <div className="text-3xl mb-1">📅</div>
+                  <p className="text-sm font-medium">No hay reservas pendientes de liquidar</p>
+                  <Link
+                    to="/reservas"
+                    className="mt-2 inline-block text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    Ir al módulo de Reservas →
+                  </Link>
+                </div>
+              ) : (
+                (pendingReservationsQuery.data || [])
+                  .filter((r) => {
+                    if (!reservationSearchQuery.trim()) return true
+                    const q = reservationSearchQuery.toLowerCase()
+                    return (
+                      r.customerName.toLowerCase().includes(q) ||
+                      r.courtName.toLowerCase().includes(q) ||
+                      r.customerPhone?.toLowerCase().includes(q)
+                    )
+                  })
+                  .map((res) => (
+                    <div
+                      key={res.id}
+                      className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 px-2 rounded-xl transition"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 dark:text-white">{res.customerName}</span>
+                          <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                            {res.courtName}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          📅 {res.reservationDate} · ⏰ {res.startTime}–{res.endTime}
+                          {res.customerPhone && ` · 📞 ${res.customerPhone}`}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1 flex items-center gap-3">
+                          <span>Total: <b>{money(res.totalPrice)}</b></span>
+                          {res.totalAdvanced > 0 && (
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              Abonado: <b>{money(res.totalAdvanced)}</b> ({res.advances.length} abono)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 sm:flex-col sm:items-end">
+                        <div className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                          Saldo: {money(res.pendingBalance)}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => loadReservationIntoCart(res)}
+                          className="rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-blue-700"
+                        >
+                          Cargar al Ticket →
+                        </button>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            <div className="mt-4 flex shrink-0 justify-between items-center border-t border-slate-100 pt-3 dark:border-slate-800">
+              <Link
+                to="/reservas"
+                className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+              >
+                + Crear nueva reserva o registrar abono
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowReservationPicker(false)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cerrar
               </button>
             </div>
           </div>

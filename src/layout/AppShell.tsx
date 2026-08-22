@@ -10,6 +10,7 @@ import {
   BagIcon,
   BoxIcon,
   BuildingIcon,
+  CalendarIcon,
   CartIcon,
   CashIcon,
   ChartIcon,
@@ -68,6 +69,7 @@ const businessGroups: NavGroup[] = [
     title: 'Operación',
     items: [
       { label: 'Punto de venta', path: '/pos', icon: CartIcon },
+      { label: 'Reservas', path: '/reservas', icon: CalendarIcon },
       { label: 'Facturas', path: '/facturas', icon: ReceiptIcon },
       { label: 'Caja', path: '/caja', icon: CashIcon },
       { label: 'Inventario', path: '/inventario', icon: BoxIcon, badgeKey: 'lowStock' },
@@ -97,12 +99,13 @@ const businessGroups: NavGroup[] = [
 ]
 
 
-// El Cajero solo debe ver Punto de venta, Caja, Reportes y Configuración
+// El Cajero solo debe ver Punto de venta, Reservas, Caja, Reportes y Configuración
 const cashierGroups: NavGroup[] = [
   {
     title: 'Operación',
     items: [
       { label: 'Punto de venta', path: '/pos', icon: CartIcon },
+      { label: 'Reservas', path: '/reservas', icon: CalendarIcon },
       { label: 'Facturas', path: '/facturas', icon: ReceiptIcon },
       { label: 'Caja', path: '/caja', icon: CashIcon },
     ],

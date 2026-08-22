@@ -15,6 +15,7 @@ export const OPERATOR_ROLES = [CASHIER_ROLE, SELLER_ROLE]
 export const ALL_PAGES = [
   { key: '/dashboard', label: 'Dashboard', icon: '🏠' },
   { key: '/pos', label: 'Punto de venta', icon: '🛒' },
+  { key: '/reservas', label: 'Reservas', icon: '⚽' },
   { key: '/caja', label: 'Caja', icon: '💵' },
   { key: '/facturas', label: 'Facturas', icon: '📄' },
   { key: '/inventario', label: 'Inventario', icon: '📦' },
@@ -33,11 +34,11 @@ export const ALL_PAGES = [
  * permisos guardado en base de datos no las incluya (se agregaron después de
  * que el usuario fue creado).
  */
-const IMPLICIT_ADMIN_PAGES = ['/dashboard', '/suscripcion']
+const IMPLICIT_ADMIN_PAGES = ['/dashboard', '/suscripcion', '/reservas']
 
 export const ADMIN_DEFAULT_PAGES = ALL_PAGES.map((p) => p.key as string)
 
-export const OPERATOR_DEFAULT_PAGES = ['/pos', '/facturas', '/caja', '/reportes', '/configuracion']
+export const OPERATOR_DEFAULT_PAGES = ['/pos', '/reservas', '/facturas', '/caja', '/reportes', '/configuracion']
 
 /** Rutas permitidas a los roles de operación cuando no tienen permisos explícitos */
 export const OPERATOR_ALLOWED_PATHS = OPERATOR_DEFAULT_PAGES

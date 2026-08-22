@@ -60,6 +60,7 @@ export type Sale = {
   sale_items: Array<{
     id: string;
     product_id: string;
+    custom_name?: string | null;
     quantity: number;
     unit_price: number;
     /** Costo unitario (unidad base) congelado al vender. Permite calcular la utilidad de la venta */
