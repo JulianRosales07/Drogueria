@@ -84,6 +84,77 @@ type ProductSalesSummary = {
   total: number
 }
 
+export type PosTab = {
+  id: string
+  ticketNumber: number
+  cart: CartItem[]
+  searchQuery: string
+  paymentAmount: string
+  paymentMethod: PaymentMethod
+  isSplitPayment: boolean
+  paymentMethod2: PaymentMethod
+  splitAmount1: string
+  splitAmount2: string
+  cashReceived: string
+  customerName: string
+  selectedCustomerId: string | null
+}
+
+const POS_TABS_STORAGE_KEY = 'pos_tabs_state_v1'
+const POS_NEXT_TICKET_KEY = 'pos_next_ticket_number_v1'
+
+function getInitialTabsState(): { tabs: PosTab[]; activeTabId: string; nextTicketNumber: number } {
+  try {
+    const saved = localStorage.getItem(POS_TABS_STORAGE_KEY)
+    const savedNextNum = localStorage.getItem(POS_NEXT_TICKET_KEY)
+    let nextTicketNumber = savedNextNum ? parseInt(savedNextNum, 10) : 1
+    if (isNaN(nextTicketNumber) || nextTicketNumber < 1) nextTicketNumber = 1
+
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed.tabs) && parsed.tabs.length > 0) {
+        const activeTabId = parsed.tabs.some((t: PosTab) => t.id === parsed.activeTabId)
+          ? parsed.activeTabId
+          : parsed.tabs[0].id
+        return { tabs: parsed.tabs, activeTabId, nextTicketNumber }
+      }
+    }
+    const initialTab: PosTab = {
+      id: 'tab-1',
+      ticketNumber: nextTicketNumber,
+      cart: [],
+      searchQuery: '',
+      paymentAmount: '',
+      paymentMethod: 'CASH',
+      isSplitPayment: false,
+      paymentMethod2: 'TRANSFER',
+      splitAmount1: '',
+      splitAmount2: '',
+      cashReceived: '',
+      customerName: '',
+      selectedCustomerId: null,
+    }
+    return { tabs: [initialTab], activeTabId: initialTab.id, nextTicketNumber }
+  } catch (e) {
+    const fallbackTab: PosTab = {
+      id: 'tab-1',
+      ticketNumber: 1,
+      cart: [],
+      searchQuery: '',
+      paymentAmount: '',
+      paymentMethod: 'CASH',
+      isSplitPayment: false,
+      paymentMethod2: 'TRANSFER',
+      splitAmount1: '',
+      splitAmount2: '',
+      cashReceived: '',
+      customerName: '',
+      selectedCustomerId: null,
+    }
+    return { tabs: [fallbackTab], activeTabId: fallbackTab.id, nextTicketNumber: 1 }
+  }
+}
+
 export function PosPage() {
   const user = useUiStore((state) => state.user)
   const queryClient = useQueryClient()
@@ -125,23 +196,173 @@ export function PosPage() {
     enabled: showDailySales,
   })
 
-  const [cart, setCart] = useState<CartItem[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
-  const [paymentAmount, setPaymentAmount] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
-  const [isSplitPayment, setIsSplitPayment] = useState(false)
-  const [paymentMethod2, setPaymentMethod2] = useState<PaymentMethod>('TRANSFER')
-  const [splitAmount1, setSplitAmount1] = useState('')
-  const [splitAmount2, setSplitAmount2] = useState('')
-  const [cashReceived, setCashReceived] = useState('')
-  const [customerName, setCustomerName] = useState('')
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
+  // ===== Estado de pestañas / tickets múltiples =====
+  const [tabsState, setTabsState] = useState(() => getInitialTabsState())
+  const { tabs, activeTabId, nextTicketNumber } = tabsState
+
+  const activeTab = useMemo(() => {
+    return tabs.find((t) => t.id === activeTabId) || tabs[0] || {
+      id: 'tab-default',
+      ticketNumber: 1,
+      cart: [],
+      searchQuery: '',
+      paymentAmount: '',
+      paymentMethod: 'CASH' as PaymentMethod,
+      isSplitPayment: false,
+      paymentMethod2: 'TRANSFER' as PaymentMethod,
+      splitAmount1: '',
+      splitAmount2: '',
+      cashReceived: '',
+      customerName: '',
+      selectedCustomerId: null,
+    }
+  }, [tabs, activeTabId])
+
+  // Persistir pestañas y contador en localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        POS_TABS_STORAGE_KEY,
+        JSON.stringify({ tabs, activeTabId }),
+      )
+      localStorage.setItem(POS_NEXT_TICKET_KEY, String(nextTicketNumber))
+    } catch (e) {}
+  }, [tabs, activeTabId, nextTicketNumber])
+
+  const updateActiveTab = (updater: Partial<PosTab> | ((current: PosTab) => PosTab)) => {
+    setTabsState((prev) => ({
+      ...prev,
+      tabs: prev.tabs.map((t) => {
+        if (t.id !== prev.activeTabId) return t
+        if (typeof updater === 'function') {
+          return updater(t)
+        }
+        return { ...t, ...updater }
+      }),
+    }))
+  }
+
+  // Proxies para el ticket activo
+  const cart = activeTab.cart
+  const searchQuery = activeTab.searchQuery
+  const paymentAmount = activeTab.paymentAmount
+  const paymentMethod = activeTab.paymentMethod
+  const isSplitPayment = activeTab.isSplitPayment
+  const paymentMethod2 = activeTab.paymentMethod2
+  const splitAmount1 = activeTab.splitAmount1
+  const splitAmount2 = activeTab.splitAmount2
+  const cashReceived = activeTab.cashReceived
+  const customerName = activeTab.customerName
+  const selectedCustomerId = activeTab.selectedCustomerId
+
+  const setCart = (action: CartItem[] | ((prev: CartItem[]) => CartItem[])) => {
+    setTabsState((prev) => ({
+      ...prev,
+      tabs: prev.tabs.map((t) => {
+        if (t.id !== prev.activeTabId) return t
+        const newCart = typeof action === 'function' ? action(t.cart) : action
+        return { ...t, cart: newCart }
+      }),
+    }))
+  }
+
+  const setSearchQuery = (val: string) => updateActiveTab({ searchQuery: val })
+  const setPaymentAmount = (val: string) => updateActiveTab({ paymentAmount: val })
+  const setPaymentMethod = (val: PaymentMethod) => updateActiveTab({ paymentMethod: val })
+  const setIsSplitPayment = (val: boolean) => updateActiveTab({ isSplitPayment: val })
+  const setPaymentMethod2 = (val: PaymentMethod) => updateActiveTab({ paymentMethod2: val })
+  const setSplitAmount1 = (val: string) => updateActiveTab({ splitAmount1: val })
+  const setSplitAmount2 = (val: string) => updateActiveTab({ splitAmount2: val })
+  const setCashReceived = (val: string) => updateActiveTab({ cashReceived: val })
+  const setCustomerName = (val: string) => updateActiveTab({ customerName: val })
+  const setSelectedCustomerId = (val: string | null) => updateActiveTab({ selectedCustomerId: val })
+
+  // Acciones de pestañas
+  const handleSelectTab = (tabId: string) => {
+    setTabsState((prev) => ({ ...prev, activeTabId: tabId }))
+    setTimeout(() => searchInputRef.current?.focus(), 50)
+  }
+
+  const handleAddNewTab = () => {
+    setTabsState((prev) => {
+      const newTicketNum = prev.nextTicketNumber + 1
+      const newTab: PosTab = {
+        id: `tab-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        ticketNumber: newTicketNum,
+        cart: [],
+        searchQuery: '',
+        paymentAmount: '',
+        paymentMethod: 'CASH',
+        isSplitPayment: false,
+        paymentMethod2: 'TRANSFER',
+        splitAmount1: '',
+        splitAmount2: '',
+        cashReceived: '',
+        customerName: '',
+        selectedCustomerId: null,
+      }
+      return {
+        ...prev,
+        tabs: [...prev.tabs, newTab],
+        activeTabId: newTab.id,
+        nextTicketNumber: newTicketNum,
+      }
+    })
+    setTimeout(() => searchInputRef.current?.focus(), 50)
+  }
+
+  const handleCloseTab = (tabId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    const target = tabs.find((t) => t.id === tabId)
+    if (!target) return
+
+    if (tabs.length === 1) {
+      if (target.cart.length > 0) {
+        if (confirm('¿Limpiar los productos de este ticket?')) {
+          setCart([])
+          setSearchQuery('')
+          setPaymentAmount('')
+          setPaymentMethod('CASH')
+          setIsSplitPayment(false)
+          setPaymentMethod2('TRANSFER')
+          setSplitAmount1('')
+          setSplitAmount2('')
+          setCashReceived('')
+          setCustomerName('')
+          setSelectedCustomerId(null)
+        }
+      }
+      return
+    }
+
+    if (target.cart.length > 0) {
+      if (!confirm(`El Ticket #${target.ticketNumber} tiene ${target.cart.length} producto(s). ¿Deseas cerrarlo y descartar esta venta?`)) {
+        return
+      }
+    }
+
+    setTabsState((prev) => {
+      const newTabs = prev.tabs.filter((t) => t.id !== tabId)
+      let newActiveId = prev.activeTabId
+      if (prev.activeTabId === tabId) {
+        const closedIndex = prev.tabs.findIndex((t) => t.id === tabId)
+        const nextIndex = Math.max(0, closedIndex - 1)
+        newActiveId = newTabs[nextIndex].id
+      }
+      return {
+        ...prev,
+        tabs: newTabs,
+        activeTabId: newActiveId,
+      }
+    })
+    setTimeout(() => searchInputRef.current?.focus(), 50)
+  }
+
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false)
   const [completedSale, setCompletedSale] = useState<Sale | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
   const [lastSale, setLastSale] = useState<Sale | null>(null)
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(true)
-  const [ticketNumber, setTicketNumber] = useState(1)
   const [presentationPicker, setPresentationPicker] = useState<Product | null>(null)
   const [viewingSale, setViewingSale] = useState<Sale | null>(null)
   const [dailySalesTab, setDailySalesTab] = useState<'PAYMENTS' | 'PRODUCTS'>('PAYMENTS')
@@ -153,23 +374,45 @@ export function PosPage() {
       setCompletedSale(sale)
       setLastSale(sale)
       setShowReceipt(true)
-      setCart([])
-      setSearchQuery('')
-      setPaymentAmount('')
-      setPaymentMethod('CASH')
-      setIsSplitPayment(false)
-      setPaymentMethod2('TRANSFER')
-      setSplitAmount1('')
-      setSplitAmount2('')
-      setCashReceived('')
-      setCustomerName('')
-      setSelectedCustomerId(null)
-      setTicketNumber((n) => n + 1)
+
+      setTabsState((prev) => {
+        const nextTicketNum = prev.nextTicketNumber + 1
+        if (prev.tabs.length > 1) {
+          const remaining = prev.tabs.filter((t) => t.id !== prev.activeTabId)
+          const pendingWithProducts = remaining.find((t) => t.cart.length > 0) || remaining[0]
+          return {
+            ...prev,
+            tabs: remaining,
+            activeTabId: pendingWithProducts.id,
+            nextTicketNumber: nextTicketNum,
+          }
+        } else {
+          const newTab: PosTab = {
+            id: `tab-${Date.now()}`,
+            ticketNumber: nextTicketNum,
+            cart: [],
+            searchQuery: '',
+            paymentAmount: '',
+            paymentMethod: 'CASH',
+            isSplitPayment: false,
+            paymentMethod2: 'TRANSFER',
+            splitAmount1: '',
+            splitAmount2: '',
+            cashReceived: '',
+            customerName: '',
+            selectedCustomerId: null,
+          }
+          return {
+            ...prev,
+            tabs: [newTab],
+            activeTabId: newTab.id,
+            nextTicketNumber: nextTicketNum,
+          }
+        }
+      })
+
       queryClient.invalidateQueries({ queryKey: ['products'] })
       queryClient.invalidateQueries({ queryKey: ['sales'] })
-      // El estado de caja incluye totales "del turno" (ventas en efectivo/otras
-      // hasta ahora) que deben refrescarse tras cada venta, o quedan en caché
-      // con el valor de cuando se abrió la caja.
       queryClient.invalidateQueries({ queryKey: ['cash-register-current'] })
       toast.success('Venta registrada')
       if (autoPrintEnabled) {
@@ -530,6 +773,20 @@ export function PosPage() {
         e.preventDefault()
         clearCart()
       }
+      if (e.key === 'F6') {
+        e.preventDefault()
+        handleAddNewTab()
+      }
+      if (e.key === 'F7') {
+        e.preventDefault()
+        setTabsState((prev) => {
+          if (prev.tabs.length <= 1) return prev
+          const currentIndex = prev.tabs.findIndex((t) => t.id === prev.activeTabId)
+          const nextIndex = (currentIndex + 1) % prev.tabs.length
+          return { ...prev, activeTabId: prev.tabs[nextIndex].id }
+        })
+        setTimeout(() => searchInputRef.current?.focus(), 50)
+      }
       if (e.key === 'Escape') {
         setShowReceipt(false)
         setShowMobileMenu(false)
@@ -537,7 +794,7 @@ export function PosPage() {
     }
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [cart, total])
+  }, [cart, total, tabs, activeTabId])
 
   // Cerrar menú móvil al hacer clic fuera
   useEffect(() => {
@@ -564,33 +821,93 @@ export function PosPage() {
   return (
     <>
       <div className="flex h-full flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white">
-        {/* ===== Barra de herramientas (estilo Eleventa: una sola fila plana) ===== */}
-        <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-white px-3 py-1.5 dark:border-slate-800 dark:bg-slate-900">
-          <span className="mr-2 text-xs font-medium text-slate-400">Ticket #{ticketNumber}</span>
+        {/* ===== Barra superior con pestañas multi-ticket (estilo Eleventa / pestañas modernas) ===== */}
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-1.5 dark:border-slate-800 dark:bg-slate-900">
+          {/* Pestañas de tickets */}
+          <div className="flex flex-1 items-center gap-1.5 overflow-x-auto py-0.5 min-w-0">
+            {tabs.map((tab) => {
+              const isActive = tab.id === activeTabId
+              const itemCount = tab.cart.reduce((acc, it) => acc + it.quantity, 0)
+              const tabTotal = tab.cart.reduce((acc, it) => acc + it.price * it.quantity, 0)
 
-          <div className="ml-auto flex items-center gap-1">
+              return (
+                <div
+                  key={tab.id}
+                  onClick={() => handleSelectTab(tab.id)}
+                  role="button"
+                  tabIndex={0}
+                  className={`group relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition select-none ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-700 font-semibold shadow-xs border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800'
+                      : 'bg-slate-100/90 text-slate-600 hover:bg-slate-200/80 border border-transparent dark:bg-slate-800/80 dark:text-slate-400 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span>🧾 Ticket #{tab.ticketNumber}</span>
+                    {itemCount > 0 && (
+                      <span
+                        className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                          isActive
+                            ? 'bg-blue-600 text-white dark:bg-blue-500'
+                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300'
+                        }`}
+                      >
+                        {itemCount} · {money(tabTotal)}
+                      </span>
+                    )}
+                  </span>
+
+                  {/* Botón cerrar pestaña (si hay más de 1) */}
+                  {tabs.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleCloseTab(tab.id, e)}
+                      title="Cerrar este ticket"
+                      className="ml-0.5 rounded p-0.5 text-slate-400 opacity-60 transition hover:bg-red-100 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-red-950/60 dark:hover:text-red-400"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Botón nuevo ticket */}
+            <button
+              type="button"
+              onClick={handleAddNewTab}
+              title="Abrir otra venta / nuevo ticket (F6)"
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-dashed border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+            >
+              <span className="text-sm font-bold leading-none">+</span>
+              <span className="hidden sm:inline">Nuevo ticket</span>
+              <span className="hidden lg:inline text-[10px] text-slate-400 font-mono">F6</span>
+            </button>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
             {/* Botones normales: visibles solo en pantallas medianas+ */}
             <button
               onClick={() => setShowDailySales(true)}
-              className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:flex"
+              className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 md:flex"
             >
               📅 Ventas del día
             </button>
             <button
               onClick={clearCart}
-              className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:flex"
+              className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 md:flex"
             >
-              🗑️ Limpiar <span className="text-xs text-slate-400">F8</span>
+              🗑️ Limpiar <span className="text-[10px] text-slate-400">F8</span>
             </button>
             <button
               onClick={reprintLast}
-              className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:flex"
+              className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 md:flex"
             >
               🖨️ Reimprimir
             </button>
 
             {/* Menú 3 puntos: visible solo en móvil */}
-            <div ref={mobileMenuRef} className="relative sm:hidden">
+            <div ref={mobileMenuRef} className="relative md:hidden">
               <button
                 onClick={() => setShowMobileMenu((v) => !v)}
                 className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
