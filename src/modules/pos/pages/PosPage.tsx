@@ -101,58 +101,51 @@ export type PosTab = {
 }
 
 const POS_TABS_STORAGE_KEY = 'pos_tabs_state_v1'
-const POS_NEXT_TICKET_KEY = 'pos_next_ticket_number_v1'
 
-function getInitialTabsState(): { tabs: PosTab[]; activeTabId: string; nextTicketNumber: number } {
+function getLowestAvailableTicketNumber(tabs: PosTab[]): number {
+  const used = new Set(tabs.map((t) => t.ticketNumber))
+  let num = 1
+  while (used.has(num)) {
+    num++
+  }
+  return num
+}
+
+function getInitialTabsState(): { tabs: PosTab[]; activeTabId: string } {
   try {
     const saved = localStorage.getItem(POS_TABS_STORAGE_KEY)
-    const savedNextNum = localStorage.getItem(POS_NEXT_TICKET_KEY)
-    let nextTicketNumber = savedNextNum ? parseInt(savedNextNum, 10) : 1
-    if (isNaN(nextTicketNumber) || nextTicketNumber < 1) nextTicketNumber = 1
-
     if (saved) {
       const parsed = JSON.parse(saved)
       if (Array.isArray(parsed.tabs) && parsed.tabs.length > 0) {
-        const activeTabId = parsed.tabs.some((t: PosTab) => t.id === parsed.activeTabId)
+        // Normalizar los números de ticket para que no haya saltos arbitrarios (ej. 1 y 5 -> 1 y 2)
+        const normalizedTabs: PosTab[] = parsed.tabs.map((t: PosTab, idx: number) => ({
+          ...t,
+          ticketNumber: idx + 1,
+        }))
+        const activeTabId = normalizedTabs.some((t) => t.id === parsed.activeTabId)
           ? parsed.activeTabId
-          : parsed.tabs[0].id
-        return { tabs: parsed.tabs, activeTabId, nextTicketNumber }
+          : normalizedTabs[0].id
+        return { tabs: normalizedTabs, activeTabId }
       }
     }
-    const initialTab: PosTab = {
-      id: 'tab-1',
-      ticketNumber: nextTicketNumber,
-      cart: [],
-      searchQuery: '',
-      paymentAmount: '',
-      paymentMethod: 'CASH',
-      isSplitPayment: false,
-      paymentMethod2: 'TRANSFER',
-      splitAmount1: '',
-      splitAmount2: '',
-      cashReceived: '',
-      customerName: '',
-      selectedCustomerId: null,
-    }
-    return { tabs: [initialTab], activeTabId: initialTab.id, nextTicketNumber }
-  } catch (e) {
-    const fallbackTab: PosTab = {
-      id: 'tab-1',
-      ticketNumber: 1,
-      cart: [],
-      searchQuery: '',
-      paymentAmount: '',
-      paymentMethod: 'CASH',
-      isSplitPayment: false,
-      paymentMethod2: 'TRANSFER',
-      splitAmount1: '',
-      splitAmount2: '',
-      cashReceived: '',
-      customerName: '',
-      selectedCustomerId: null,
-    }
-    return { tabs: [fallbackTab], activeTabId: fallbackTab.id, nextTicketNumber: 1 }
+  } catch (e) {}
+
+  const initialTab: PosTab = {
+    id: 'tab-1',
+    ticketNumber: 1,
+    cart: [],
+    searchQuery: '',
+    paymentAmount: '',
+    paymentMethod: 'CASH',
+    isSplitPayment: false,
+    paymentMethod2: 'TRANSFER',
+    splitAmount1: '',
+    splitAmount2: '',
+    cashReceived: '',
+    customerName: '',
+    selectedCustomerId: null,
   }
+  return { tabs: [initialTab], activeTabId: initialTab.id }
 }
 
 export function PosPage() {
@@ -198,7 +191,7 @@ export function PosPage() {
 
   // ===== Estado de pestañas / tickets múltiples =====
   const [tabsState, setTabsState] = useState(() => getInitialTabsState())
-  const { tabs, activeTabId, nextTicketNumber } = tabsState
+  const { tabs, activeTabId } = tabsState
 
   const activeTab = useMemo(() => {
     return tabs.find((t) => t.id === activeTabId) || tabs[0] || {
@@ -218,16 +211,15 @@ export function PosPage() {
     }
   }, [tabs, activeTabId])
 
-  // Persistir pestañas y contador en localStorage
+  // Persistir pestañas en localStorage
   useEffect(() => {
     try {
       localStorage.setItem(
         POS_TABS_STORAGE_KEY,
         JSON.stringify({ tabs, activeTabId }),
       )
-      localStorage.setItem(POS_NEXT_TICKET_KEY, String(nextTicketNumber))
     } catch (e) {}
-  }, [tabs, activeTabId, nextTicketNumber])
+  }, [tabs, activeTabId])
 
   const updateActiveTab = (updater: Partial<PosTab> | ((current: PosTab) => PosTab)) => {
     setTabsState((prev) => ({
@@ -285,7 +277,7 @@ export function PosPage() {
 
   const handleAddNewTab = () => {
     setTabsState((prev) => {
-      const newTicketNum = prev.nextTicketNumber + 1
+      const newTicketNum = getLowestAvailableTicketNumber(prev.tabs)
       const newTab: PosTab = {
         id: `tab-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         ticketNumber: newTicketNum,
@@ -301,11 +293,11 @@ export function PosPage() {
         customerName: '',
         selectedCustomerId: null,
       }
+      const updatedTabs = [...prev.tabs, newTab].sort((a, b) => a.ticketNumber - b.ticketNumber)
       return {
         ...prev,
-        tabs: [...prev.tabs, newTab],
+        tabs: updatedTabs,
         activeTabId: newTab.id,
-        nextTicketNumber: newTicketNum,
       }
     })
     setTimeout(() => searchInputRef.current?.focus(), 50)
@@ -376,7 +368,6 @@ export function PosPage() {
       setShowReceipt(true)
 
       setTabsState((prev) => {
-        const nextTicketNum = prev.nextTicketNumber + 1
         if (prev.tabs.length > 1) {
           const remaining = prev.tabs.filter((t) => t.id !== prev.activeTabId)
           const pendingWithProducts = remaining.find((t) => t.cart.length > 0) || remaining[0]
@@ -384,12 +375,11 @@ export function PosPage() {
             ...prev,
             tabs: remaining,
             activeTabId: pendingWithProducts.id,
-            nextTicketNumber: nextTicketNum,
           }
         } else {
           const newTab: PosTab = {
             id: `tab-${Date.now()}`,
-            ticketNumber: nextTicketNum,
+            ticketNumber: 1,
             cart: [],
             searchQuery: '',
             paymentAmount: '',
@@ -406,7 +396,6 @@ export function PosPage() {
             ...prev,
             tabs: [newTab],
             activeTabId: newTab.id,
-            nextTicketNumber: nextTicketNum,
           }
         }
       })
@@ -418,9 +407,6 @@ export function PosPage() {
       if (autoPrintEnabled) {
         setTimeout(() => handlePrint(), 400)
       }
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Error al registrar la venta')
     },
   })
 
