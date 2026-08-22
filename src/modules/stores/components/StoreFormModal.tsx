@@ -26,6 +26,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
     email: '',
     type: 'PHARMACY' as 'PHARMACY' | 'STORE',
     isActive: true,
+    hasReservations: false,
     subscriptionStatus: 'TRIAL' as 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED',
     trialDays: 15,
   })
@@ -40,6 +41,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
         email: store.email || '',
         type: store.type || 'PHARMACY',
         isActive: store.isActive,
+        hasReservations: Boolean(store.hasReservations),
         subscriptionStatus: store.subscriptionStatus || 'TRIAL',
         trialDays: (store.daysRemaining !== null && store.daysRemaining !== undefined) ? store.daysRemaining : (store.trialDays || 15),
       })
@@ -52,6 +54,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
         email: '',
         type: 'PHARMACY',
         isActive: true,
+        hasReservations: false,
         subscriptionStatus: 'TRIAL',
         trialDays: 15,
       })
@@ -100,6 +103,7 @@ export function StoreFormModal({ open, store, onClose }: Props) {
       phone: form.phone || null,
       email: form.email || null,
       type: form.type,
+      hasReservations: form.hasReservations,
       subscriptionStatus: form.subscriptionStatus,
       trialDays: Number(form.trialDays) || 15,
     }
@@ -284,6 +288,27 @@ export function StoreFormModal({ open, store, onClose }: Props) {
                   ? 'Acceso operativo total sin restricción de días de prueba.'
                   : 'El establecimiento está bloqueado para nuevas ventas y compras.'}
               </p>
+            </div>
+
+            {/* Módulo de Canchas y Reservas */}
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3.5 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="hasReservations"
+                  checked={form.hasReservations}
+                  onChange={(e) => handleChange('hasReservations', e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <div>
+                  <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
+                    <span>⚽</span> Activar Módulo de Canchas Sintéticas / Reservas
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                    Habilita la agenda de reservas de canchas, control de abonos/anticipos en caja y la liquidación del saldo en el punto de venta (POS).
+                  </p>
+                </div>
+              </label>
             </div>
 
             {isEditing && (

@@ -107,13 +107,20 @@ export function StoresPage() {
         header: 'Tipo',
         accessorKey: 'type',
         cell: ({ row }) => (
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            row.original.type === 'STORE'
-              ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400'
-              : 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400'
-          }`}>
-            {row.original.type === 'STORE' ? 'Tienda General' : 'Droguería / Farmacia'}
-          </span>
+          <div className="flex flex-wrap gap-1 items-center">
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              row.original.type === 'STORE'
+                ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400'
+                : 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400'
+            }`}>
+              {row.original.type === 'STORE' ? 'Tienda General' : 'Droguería / Farmacia'}
+            </span>
+            {row.original.hasReservations && (
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+                ⚽ Canchas
+              </span>
+            )}
+          </div>
         ),
       },
       {

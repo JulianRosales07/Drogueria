@@ -135,22 +135,33 @@ export function AppShell() {
 
   const isSuperAdmin = user?.role === SUPER_ADMIN_ROLE
   const isOperator = user?.role ? OPERATOR_ROLES.includes(user.role) : false
-  const { storeTerm } = useStoreContext()
+  const { storeTerm, hasReservations } = useStoreContext()
   const baseGroups = isSuperAdmin ? superAdminGroups : isOperator ? cashierGroups : businessGroups
 
   const groups = useMemo(() => {
     const permissions = effectivePermissions(user)
+    const canSeeReservas = isSuperAdmin || hasReservations
+
     if (isSuperAdmin || !permissions) {
+      if (canSeeReservas) return baseGroups
       return baseGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => item.path !== '/reservas'),
+        }))
+        .filter((group) => group.items.length > 0)
     }
+
     const allowedSet = new Set(permissions)
     return baseGroups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => allowedSet.has(item.path)),
+        items: group.items.filter(
+          (item) => allowedSet.has(item.path) && (item.path !== '/reservas' || canSeeReservas)
+        ),
       }))
       .filter((group) => group.items.length > 0)
-  }, [baseGroups, isSuperAdmin, user])
+  }, [baseGroups, isSuperAdmin, user, hasReservations])
 
   const { data: summary } = useQuery({
     queryKey: ['dashboard-summary'],

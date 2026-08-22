@@ -17,6 +17,7 @@ import { listCustomers } from '../../../services/api/customers'
 import { getCurrentCashRegister, listCashRegisterHistory } from '../../../services/api/cash-registers'
 import { listReservations, completeReservation, type CourtReservation } from '../../../services/api/reservations'
 import { useReceiptConfig } from '../../../hooks/useReceiptConfig'
+import { useStoreContext } from '../../../hooks/useStoreContext'
 import { useUiStore } from '../../../store/ui-store'
 
 type CartItem = {
@@ -152,6 +153,7 @@ function getInitialTabsState(): { tabs: PosTab[]; activeTabId: string } {
 
 export function PosPage() {
   const user = useUiStore((state) => state.user)
+  const { hasReservations } = useStoreContext()
   const queryClient = useQueryClient()
   const receiptRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -929,13 +931,15 @@ export function PosPage() {
 
           <div className="flex shrink-0 items-center gap-1">
             {/* Botones normales: visibles solo en pantallas medianas+ */}
-            <button
-              onClick={() => setShowReservationPicker(true)}
-              className="hidden items-center gap-1.5 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 md:flex"
-              title="Cargar una reserva de cancha y liquidar saldo"
-            >
-              ⚽ Cargar Reserva
-            </button>
+            {hasReservations && (
+              <button
+                onClick={() => setShowReservationPicker(true)}
+                className="hidden items-center gap-1.5 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 md:flex"
+                title="Cargar una reserva de cancha y liquidar saldo"
+              >
+                ⚽ Cargar Reserva
+              </button>
+            )}
             <button
               onClick={() => setShowDailySales(true)}
               className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 md:flex"
@@ -971,12 +975,14 @@ export function PosPage() {
 
               {showMobileMenu && (
                 <div className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
-                  <button
-                    onClick={() => { setShowReservationPicker(true); setShowMobileMenu(false) }}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-sm font-semibold text-blue-600 transition hover:bg-slate-50 dark:text-blue-400 dark:hover:bg-slate-800"
-                  >
-                    ⚽ Cargar Reserva
-                  </button>
+                  {hasReservations && (
+                    <button
+                      onClick={() => { setShowReservationPicker(true); setShowMobileMenu(false) }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-sm font-semibold text-blue-600 transition hover:bg-slate-50 dark:text-blue-400 dark:hover:bg-slate-800"
+                    >
+                      ⚽ Cargar Reserva
+                    </button>
+                  )}
                   <button
                     onClick={() => { setShowDailySales(true); setShowMobileMenu(false) }}
                     className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"

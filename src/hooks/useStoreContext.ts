@@ -10,6 +10,7 @@ export function useStoreContext() {
     storeType,
     isPharmacy: storeType === 'PHARMACY',
     isStore: storeType === 'STORE',
+    hasReservations: Boolean(user?.hasReservations),
     labels,
     storeTerm: labels.storeTerm,
     storeTermPlural: labels.storeTermPlural,

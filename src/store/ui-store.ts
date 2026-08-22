@@ -13,6 +13,7 @@ export type AuthUser = {
   storeId?: string | null
   storeName?: string | null
   storeType?: 'PHARMACY' | 'STORE' | null
+  hasReservations?: boolean
   subscriptionStatus?: SubscriptionStatus | null
   trialEndsAt?: string | null
   daysRemaining?: number | null

@@ -110,6 +110,26 @@ function BusinessRoute({ children }: { children: ReactNode }) {
   return children
 }
 
+/** Ruta solo accesible si el establecimiento tiene activado el módulo de reservas */
+function ReservationsRoute({ children }: { children: ReactNode }) {
+  const isAuthenticated = useUiStore((state) => state.isAuthenticated)
+  const user = useUiStore((state) => state.user)
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (user?.role === SUPER_ADMIN_ROLE) {
+    return <Navigate to="/droguerias" replace />
+  }
+
+  if (!user?.hasReservations) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return <BusinessRoute>{children}</BusinessRoute>
+}
+
 function homeRouteFor(user: { role?: string; permissions?: string[] | null } | null) {
   if (user?.role === SUPER_ADMIN_ROLE) return '/droguerias'
   return fallbackPathFor(user)
@@ -126,6 +146,7 @@ export function App() {
         {/* Redirigir raíz según el rol y permisos */}
         <Route path="/" element={<Navigate to={homeRouteFor(user)} replace />} />
 
+        {/* Punto de venta y Reservas */}
         <Route
           path="/pos"
           element={
@@ -137,9 +158,9 @@ export function App() {
         <Route
           path="/reservas"
           element={
-            <BusinessRoute>
+            <ReservationsRoute>
               <ReservationsPage />
-            </BusinessRoute>
+            </ReservationsRoute>
           }
         />
         <Route

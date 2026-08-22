@@ -12,6 +12,7 @@ export type StoreRecord = {
   email: string | null;
   type: StoreType;
   isActive: boolean;
+  hasReservations?: boolean;
   subscriptionStatus: SubscriptionStatus;
   trialDays: number;
   trialStartedAt: string | null;
@@ -29,6 +30,7 @@ export type CreateStoreInput = {
   phone?: string | null;
   email?: string | null;
   type?: StoreType;
+  hasReservations?: boolean;
   subscriptionStatus?: SubscriptionStatus;
   trialDays?: number;
   trialEndsAt?: string | null;
